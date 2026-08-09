@@ -10,12 +10,12 @@ const QUIET_START_HOUR = 22;
 const QUIET_END_HOUR = 7;
 
 const assets = {
-  hydration: require('@/assets/pippo/hydrate.jpeg'),
-  sleep: require('@/assets/pippo/sleep-1.jpeg'),
-  study: require('@/assets/pippo/no-phone.jpeg'),
-  miss_you: require('@/assets/pippo/miss-you-1.jpeg'),
-  laundry: require('@/assets/pippo/laundry.jpeg'),
-  keep_calm: require('@/assets/pippo/keep-calm.jpeg'),
+  hydration: require('@/assets/pippo/hydrate.webp'),
+  sleep: require('@/assets/pippo/sleep-1.webp'),
+  study: require('@/assets/pippo/no-phone.webp'),
+  miss_you: require('@/assets/pippo/miss-you-1.webp'),
+  laundry: require('@/assets/pippo/laundry.webp'),
+  keep_calm: require('@/assets/pippo/keep-calm.webp'),
 } as const;
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowBanner: true, shouldShowList: true, shouldPlaySound: true, shouldSetBadge: false }) });
@@ -23,8 +23,8 @@ Notifications.setNotificationHandler({ handleNotification: async () => ({ should
 function pick<T>(items: readonly T[]) { return items[Math.floor(Math.random() * items.length)]; }
 function attachment(category: NotificationCategory) {
   if (Platform.OS !== 'ios') return undefined;
-  const source = Image.resolveAssetSource(category === 'sleep' ? pick([require('@/assets/pippo/sleep-1.jpeg'), require('@/assets/pippo/sleep-2.jpeg')]) : category === 'miss_you' ? pick([require('@/assets/pippo/miss-you-1.jpeg'), require('@/assets/pippo/miss-you-2.jpeg'), require('@/assets/pippo/miss-you-3.jpeg'), require('@/assets/pippo/miss-you-4.jpeg')]) : assets[category]);
-  return [{ identifier: category, url: source.uri, type: 'public.jpeg' }];
+  const source = Image.resolveAssetSource(category === 'sleep' ? pick([require('@/assets/pippo/sleep-1.webp'), require('@/assets/pippo/sleep-2.webp')]) : category === 'miss_you' ? pick([require('@/assets/pippo/miss-you-1.webp'), require('@/assets/pippo/miss-you-2.webp'), require('@/assets/pippo/miss-you-3.webp'), require('@/assets/pippo/miss-you-4.webp')]) : assets[category]);
+  return [{ identifier: category, url: source.uri, type: 'public.webp' }];
 }
 function content(category: NotificationCategory) {
   return { title: category === 'laundry' ? 'Pippo laundry reminder' : 'Pippo', body: pick(NOTIFICATION_MESSAGES[category]), data: { pippoCategory: category }, sound: 'default' as const, ...(attachment(category) ? { attachments: attachment(category) } : {}) };

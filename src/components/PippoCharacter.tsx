@@ -4,15 +4,15 @@ import { StyleSheet, View } from 'react-native';
 import type { PippoState } from '@/services/pippoState';
 
 const images: Record<PippoState, number> = {
-  neutral: require('@/assets/pippo/neutral.png'),
-  slightly_sad: require('@/assets/pippo/slightly-sad.png'),
-  sad: require('@/assets/pippo/sad.png'),
-  angry: require('@/assets/pippo/angry.png'),
-  happy: require('@/assets/pippo/happy.png'),
-  very_happy: require('@/assets/pippo/very-happy.png'),
-  celebration: require('@/assets/pippo/celebration.png'),
-  pleading: require('@/assets/pippo/pleading.png'),
-  dead: require('@/assets/pippo/dead.png'),
+  neutral: require('@/assets/pippo/neutral.webp'),
+  slightly_sad: require('@/assets/pippo/slightly-sad.webp'),
+  sad: require('@/assets/pippo/sad.webp'),
+  angry: require('@/assets/pippo/angry.webp'),
+  happy: require('@/assets/pippo/happy.webp'),
+  very_happy: require('@/assets/pippo/very-happy.webp'),
+  celebration: require('@/assets/pippo/celebration.webp'),
+  pleading: require('@/assets/pippo/pleading.webp'),
+  dead: require('@/assets/pippo/dead.webp'),
 };
 
 export function PippoCharacter({ state, size = 220 }: { state: PippoState; size?: number }) {
