@@ -1,2 +1,18 @@
-import { useEffect, useState } from 'react'; import { useSQLiteContext } from 'expo-sqlite'; import { Text, View } from 'react-native'; import { MixedStudySession } from '@/components/MixedStudySession'; import { selectRandomMcqs } from '@/database/queries/quality'; import type { StudyItem } from '@/database/types';
-export default function RandomQuizScreen() { const db = useSQLiteContext(); const [items, setItems] = useState<StudyItem[]>([]); useEffect(() => { void selectRandomMcqs(db, 50).then(setItems); }, [db]); return <View style={{ flex: 1 }}><MixedStudySession db={db} items={items} source="random_quiz" /></View>; }
+import { MixedStudySession } from "@/components/MixedStudySession";
+import { selectRandomMcqs } from "@/database/queries/quality";
+import type { StudyItem } from "@/database/types";
+import { useSQLiteContext } from "expo-sqlite";
+import { useEffect, useState } from "react";
+import { View } from "react-native";
+export default function RandomQuizScreen() {
+  const db = useSQLiteContext();
+  const [items, setItems] = useState<StudyItem[]>([]);
+  useEffect(() => {
+    void selectRandomMcqs(db, 50).then(setItems);
+  }, [db]);
+  return (
+    <View style={{ flex: 1 }}>
+      <MixedStudySession db={db} items={items} source="random_quiz" />
+    </View>
+  );
+}

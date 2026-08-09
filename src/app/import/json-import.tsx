@@ -1,19 +1,231 @@
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useSQLiteContext } from "expo-sqlite";
+import { useCallback, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { getDecks, getSubjects } from '@/database/queries/study';
-import type { Deck, Subject } from '@/database/types';
-import { importPreview, type ImportKind, type ImportPreview, validateNotebookLmJson } from '@/services/jsonImporter';
+import { getDecks, getSubjects } from "@/database/queries/study";
+import type { Deck, Subject } from "@/database/types";
+import {
+  importPreview,
+  validateNotebookLmJson,
+  type ImportKind,
+  type ImportPreview,
+} from "@/services/jsonImporter";
 
 export default function JsonImportScreen() {
-  const { kind = 'flashcards' } = useLocalSearchParams<{ kind?: ImportKind }>();
-  const db = useSQLiteContext(); const [raw, setRaw] = useState(''); const [preview, setPreview] = useState<ImportPreview | null>(null); const [error, setError] = useState<string | null>(null); const [subjects, setSubjects] = useState<Subject[]>([]); const [decks, setDecks] = useState<Deck[]>([]); const [subjectName, setSubjectName] = useState(''); const [deckName, setDeckName] = useState(''); const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null); const [importing, setImporting] = useState(false);
-  useFocusEffect(useCallback(() => { void getSubjects(db).then(setSubjects); }, [db]));
-  const selectSubject = async (subject: Subject) => { setSelectedSubjectId(subject.id); setSubjectName(subject.name); setDeckName(''); setDecks(await getDecks(db, subject.id)); };
-  const validate = () => { try { const next = validateNotebookLmJson(raw, kind); setPreview(next); setSubjectName(next.subject); setSelectedSubjectId(null); setDeckName(''); setError(null); } catch (reason) { setPreview(null); setError(reason instanceof Error ? reason.message : 'Could not validate that JSON.'); } };
-  const submit = async () => { if (!preview) return; try { setImporting(true); const result = await importPreview(db, preview, subjectName, deckName); router.replace({ pathname: '/study/decks', params: { subjectId: result.subjectId, subjectName } }); } catch (reason) { Alert.alert('Import failed', reason instanceof Error ? reason.message : 'Please check the selected subject and deck.'); } finally { setImporting(false); } };
-  return <ScrollView contentContainerStyle={styles.screen}><Text style={styles.title}>{kind === 'flashcards' ? 'Flashcards' : 'MCQs'} JSON</Text><Text style={styles.help}>Paste NotebookLM’s JSON response. Markdown fences are accepted.</Text><TextInput multiline value={raw} onChangeText={setRaw} placeholder="Paste JSON here" style={styles.input} textAlignVertical="top" autoCapitalize="none" autoCorrect={false} /><Pressable onPress={validate} style={styles.validate}><Text style={styles.validateText}>Validate JSON</Text></Pressable>{error && <Text style={styles.error}>{error}</Text>}{preview && <View style={styles.summary}><Text style={styles.valid}>✓ Valid JSON, {preview.items.length} {kind === 'flashcards' ? 'flashcards' : 'MCQs'} found.</Text><Text style={styles.label}>Subject</Text><TextInput value={subjectName} onChangeText={(value) => { setSubjectName(value); setSelectedSubjectId(null); }} style={styles.smallInput} placeholder="Subject name" />{subjects.length > 0 && <View style={styles.chips}>{subjects.map((subject) => <Pressable key={subject.id} onPress={() => void selectSubject(subject)} style={[styles.chip, selectedSubjectId === subject.id && styles.chipSelected]}><Text>{subject.name}</Text></Pressable>)}</View>}<Text style={styles.label}>Deck</Text><TextInput value={deckName} onChangeText={setDeckName} style={styles.smallInput} placeholder="Create or name a deck" />{decks.length > 0 && <View style={styles.chips}>{decks.map((deck) => <Pressable key={deck.id} onPress={() => setDeckName(deck.name)} style={[styles.chip, deckName === deck.name && styles.chipSelected]}><Text>{deck.name}</Text></Pressable>)}</View>}<Pressable disabled={importing || !subjectName.trim() || !deckName.trim()} onPress={() => void submit()} style={[styles.import, (!subjectName.trim() || !deckName.trim()) && styles.disabled]}><Text style={styles.importText}>{importing ? 'Importing…' : `Import ${preview.items.length} items`}</Text></Pressable></View>}</ScrollView>;
+  const { kind = "flashcards" } = useLocalSearchParams<{ kind?: ImportKind }>();
+  const db = useSQLiteContext();
+  const [raw, setRaw] = useState("");
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [decks, setDecks] = useState<Deck[]>([]);
+  const [subjectName, setSubjectName] = useState("");
+  const [deckName, setDeckName] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
+    null,
+  );
+  const [importing, setImporting] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      void getSubjects(db).then(setSubjects);
+    }, [db]),
+  );
+  const selectSubject = async (subject: Subject) => {
+    setSelectedSubjectId(subject.id);
+    setSubjectName(subject.name);
+    setDeckName("");
+    setDecks(await getDecks(db, subject.id));
+  };
+  const validate = () => {
+    try {
+      const next = validateNotebookLmJson(raw, kind);
+      setPreview(next);
+      setSubjectName(next.subject);
+      setSelectedSubjectId(null);
+      setDeckName("");
+      setError(null);
+    } catch (reason) {
+      setPreview(null);
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Could not validate that JSON.",
+      );
+    }
+  };
+  const submit = async () => {
+    if (!preview) return;
+    try {
+      setImporting(true);
+      const result = await importPreview(db, preview, subjectName, deckName);
+      router.replace({
+        pathname: "/study/decks",
+        params: { subjectId: result.subjectId, subjectName },
+      });
+    } catch (reason) {
+      Alert.alert(
+        "Import failed",
+        reason instanceof Error
+          ? reason.message
+          : "Please check the selected subject and deck.",
+      );
+    } finally {
+      setImporting(false);
+    }
+  };
+  return (
+    <ScrollView contentContainerStyle={styles.screen}>
+      <Text style={styles.title}>
+        {kind === "flashcards" ? "Flashcards" : "MCQs"} JSON
+      </Text>
+      <Text style={styles.help}>
+        Paste NotebookLM’s JSON response. Markdown fences are accepted.
+      </Text>
+      <TextInput
+        multiline
+        value={raw}
+        onChangeText={setRaw}
+        placeholder="Paste JSON here"
+        style={styles.input}
+        textAlignVertical="top"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
+      <Pressable onPress={validate} style={styles.validate}>
+        <Text style={styles.validateText}>Validate JSON</Text>
+      </Pressable>
+      {error && <Text style={styles.error}>{error}</Text>}
+      {preview && (
+        <View style={styles.summary}>
+          <Text style={styles.valid}>
+            ✓ Valid JSON, {preview.items.length}{" "}
+            {kind === "flashcards" ? "flashcards" : "MCQs"} found.
+          </Text>
+          <Text style={styles.label}>Subject</Text>
+          <TextInput
+            value={subjectName}
+            onChangeText={(value) => {
+              setSubjectName(value);
+              setSelectedSubjectId(null);
+            }}
+            style={styles.smallInput}
+            placeholder="Subject name"
+          />
+          {subjects.length > 0 && (
+            <View style={styles.chips}>
+              {subjects.map((subject) => (
+                <Pressable
+                  key={subject.id}
+                  onPress={() => void selectSubject(subject)}
+                  style={[
+                    styles.chip,
+                    selectedSubjectId === subject.id && styles.chipSelected,
+                  ]}
+                >
+                  <Text>{subject.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <Text style={styles.label}>Deck</Text>
+          <TextInput
+            value={deckName}
+            onChangeText={setDeckName}
+            style={styles.smallInput}
+            placeholder="Create or name a deck"
+          />
+          {decks.length > 0 && (
+            <View style={styles.chips}>
+              {decks.map((deck) => (
+                <Pressable
+                  key={deck.id}
+                  onPress={() => setDeckName(deck.name)}
+                  style={[
+                    styles.chip,
+                    deckName === deck.name && styles.chipSelected,
+                  ]}
+                >
+                  <Text>{deck.name}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <Pressable
+            disabled={importing || !subjectName.trim() || !deckName.trim()}
+            onPress={() => void submit()}
+            style={[
+              styles.import,
+              (!subjectName.trim() || !deckName.trim()) && styles.disabled,
+            ]}
+          >
+            <Text style={styles.importText}>
+              {importing
+                ? "Importing…"
+                : `Import ${preview.items.length} items`}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </ScrollView>
+  );
 }
-const styles = StyleSheet.create({ screen: { padding: 20, gap: 12, backgroundColor: '#FFF9F2', flexGrow: 1 }, title: { fontSize: 26, fontWeight: '800', color: '#3E2B23' }, help: { color: '#6C564D', lineHeight: 21 }, input: { minHeight: 230, borderWidth: 1, borderColor: '#E7D5C9', borderRadius: 12, padding: 14, backgroundColor: '#FFF', fontSize: 15 }, validate: { backgroundColor: '#D96642', alignItems: 'center', padding: 15, borderRadius: 12 }, validateText: { color: '#FFF', fontWeight: '700' }, error: { color: '#B42318', lineHeight: 21 }, summary: { paddingTop: 8, gap: 10 }, valid: { color: '#267942', fontWeight: '700', fontSize: 16 }, label: { fontWeight: '800', color: '#3E2B23', marginTop: 4 }, smallInput: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E7D5C9', padding: 13, borderRadius: 10 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#E7D5C9', backgroundColor: '#FFF', paddingVertical: 8, paddingHorizontal: 10, borderRadius: 99 }, chipSelected: { borderColor: '#D96642', backgroundColor: '#FBE4D9' }, import: { backgroundColor: '#2E8B57', alignItems: 'center', padding: 16, borderRadius: 12, marginTop: 6 }, disabled: { opacity: 0.45 }, importText: { color: '#FFF', fontWeight: '800' } });
+const styles = StyleSheet.create({
+  screen: { padding: 20, gap: 12, backgroundColor: "#FFF9F2", flexGrow: 1 },
+  title: { fontSize: 26, fontWeight: "800", color: "#3E2B23" },
+  help: { color: "#6C564D", lineHeight: 21 },
+  input: {
+    minHeight: 230,
+    borderWidth: 1,
+    borderColor: "#E7D5C9",
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: "#FFF",
+    fontSize: 15,
+  },
+  validate: {
+    backgroundColor: "#D96642",
+    alignItems: "center",
+    padding: 15,
+    borderRadius: 12,
+  },
+  validateText: { color: "#FFF", fontWeight: "700" },
+  error: { color: "#B42318", lineHeight: 21 },
+  summary: { paddingTop: 8, gap: 10 },
+  valid: { color: "#267942", fontWeight: "700", fontSize: 16 },
+  label: { fontWeight: "800", color: "#3E2B23", marginTop: 4 },
+  smallInput: {
+    backgroundColor: "#FFF",
+    borderWidth: 1,
+    borderColor: "#E7D5C9",
+    padding: 13,
+    borderRadius: 10,
+  },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    borderWidth: 1,
+    borderColor: "#E7D5C9",
+    backgroundColor: "#FFF",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 99,
+  },
+  chipSelected: { borderColor: "#D96642", backgroundColor: "#FBE4D9" },
+  import: {
+    backgroundColor: "#2E8B57",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 6,
+  },
+  disabled: { opacity: 0.45 },
+  importText: { color: "#FFF", fontWeight: "800" },
+});
