@@ -77,7 +77,6 @@ export function SidebarDrawer({
 
           <Text style={styles.section}>TOOLS</Text>
           {item("Calendar", "/calendar" as Href)}
-          {item("Study Timer", "/timer" as Href)}
 
           <Pressable
             onPress={() =>

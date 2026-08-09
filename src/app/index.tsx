@@ -1,13 +1,8 @@
-import { Link, useFocusEffect, type Href } from "expo-router";
+import { Link, Stack, useFocusEffect, type Href } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Alert,
-  Pressable,
-  StyleSheet,
-  Text,
-  View
-} from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PippoCharacter } from "@/components/PippoCharacter";
 import { SidebarDrawer } from "@/components/SidebarDrawer";
@@ -46,6 +41,7 @@ const EMPTY_LAUNDRY: LaundryReminder = { is_active: 0, started_at: null };
 
 export default function HomeScreen() {
   const db = useSQLiteContext();
+  const insets = useSafeAreaInsets();
   const [completed, setCompleted] = useState(0);
   const [streak, setStreak] = useState(EMPTY_STREAK);
   const [laundry, setLaundry] = useState(EMPTY_LAUNDRY);
@@ -140,12 +136,15 @@ export default function HomeScreen() {
     completed < 50 && streak.current_streak > 0 && new Date().getHours() >= 20;
 
   return (
-    <View style={styles.screen}>
+    <View
+      style={[styles.screen, { paddingTop: Math.max(insets.top, 20) + 16 }]}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <Text style={styles.title}>Pippo</Text>
         <Pressable onPress={() => setMenu(true)}>
           <Text style={styles.settings}>☰ Menu</Text>
         </Pressable>
+        <Text style={styles.title}>Pippo</Text>
       </View>
 
       <PippoCharacter state={state} />
@@ -199,7 +198,8 @@ export default function HomeScreen() {
         </Link>
       )}
 
-      {menu && <SidebarDrawer visible={menu} onClose={() => setMenu(false)} />}
+      {/* RENDER UNCONDITIONALLY - Modal handles the visibility internally */}
+      <SidebarDrawer visible={menu} onClose={() => setMenu(false)} />
     </View>
   );
 }
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   title: { fontSize: 38, fontWeight: "800", color: "#3E2B23" },
-  settings: { color: "#9E452C", fontWeight: "700" },
+  settings: { color: "#9E452C", fontWeight: "700", fontSize: 18 },
   message: {
     color: "#6C564D",
     textAlign: "center",

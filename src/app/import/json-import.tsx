@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -21,37 +21,59 @@ import {
 } from "@/services/jsonImporter";
 
 export default function JsonImportScreen() {
-  const { kind = "flashcards" } = useLocalSearchParams<{ kind?: ImportKind }>();
+  const { kind = "flashcards", prefillSubject } = useLocalSearchParams<{
+    kind?: ImportKind;
+    prefillSubject?: string;
+  }>();
   const db = useSQLiteContext();
   const [raw, setRaw] = useState("");
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [decks, setDecks] = useState<Deck[]>([]);
-  const [subjectName, setSubjectName] = useState("");
-  const [deckName, setDeckName] = useState("");
+
+  const [subjectName, setSubjectName] = useState(prefillSubject || "General");
+  const [deckName, setDeckName] = useState("General");
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(
     null,
   );
   const [importing, setImporting] = useState(false);
+
   useFocusEffect(
     useCallback(() => {
       void getSubjects(db).then(setSubjects);
     }, [db]),
   );
+
+  // If a prefilled subject is passed, try to pre-fetch its decks automatically
+  useEffect(() => {
+    if (prefillSubject && subjects.length > 0) {
+      const existing = subjects.find(
+        (s) => s.name.toLowerCase() === prefillSubject.toLowerCase(),
+      );
+      if (existing) {
+        setSelectedSubjectId(existing.id);
+        void getDecks(db, existing.id).then(setDecks);
+      }
+    }
+  }, [prefillSubject, subjects, db]);
+
   const selectSubject = async (subject: Subject) => {
     setSelectedSubjectId(subject.id);
     setSubjectName(subject.name);
     setDeckName("");
     setDecks(await getDecks(db, subject.id));
   };
+
   const validate = () => {
     try {
+      // The importer will now accept the exact schema from your prompts
       const next = validateNotebookLmJson(raw, kind);
       setPreview(next);
-      setSubjectName(next.subject);
-      setSelectedSubjectId(null);
-      setDeckName("");
+      // Only override the subject name if NotebookLM actually provided one AND we didn't pass a strict prefill
+      if (next.subject && !prefillSubject) {
+        setSubjectName(next.subject);
+      }
       setError(null);
     } catch (reason) {
       setPreview(null);
@@ -62,6 +84,7 @@ export default function JsonImportScreen() {
       );
     }
   };
+
   const submit = async () => {
     if (!preview) return;
     try {
@@ -82,34 +105,40 @@ export default function JsonImportScreen() {
       setImporting(false);
     }
   };
+
   return (
     <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>
         {kind === "flashcards" ? "Flashcards" : "MCQs"} JSON
       </Text>
-      <Text style={styles.help}>
-        Paste NotebookLM’s JSON response. Markdown fences are accepted.
-      </Text>
+      <Text style={styles.help}>Paste NotebookLM’s JSON response.</Text>
+
       <TextInput
-        multiline
         value={raw}
-        onChangeText={setRaw}
-        placeholder="Paste JSON here"
+        onChangeText={(text) => {
+          setRaw(text);
+          setPreview(null);
+        }}
         style={styles.input}
-        textAlignVertical="top"
+        multiline
         autoCapitalize="none"
         autoCorrect={false}
+        placeholder="[ { ... } ]"
       />
+
       <Pressable onPress={validate} style={styles.validate}>
         <Text style={styles.validateText}>Validate JSON</Text>
       </Pressable>
+
       {error && <Text style={styles.error}>{error}</Text>}
+
       {preview && (
         <View style={styles.summary}>
           <Text style={styles.valid}>
             ✓ Valid JSON, {preview.items.length}{" "}
             {kind === "flashcards" ? "flashcards" : "MCQs"} found.
           </Text>
+
           <Text style={styles.label}>Subject</Text>
           <TextInput
             value={subjectName}
@@ -120,7 +149,8 @@ export default function JsonImportScreen() {
             style={styles.smallInput}
             placeholder="Subject name"
           />
-          {subjects.length > 0 && (
+
+          {subjects.length > 0 && !prefillSubject && (
             <View style={styles.chips}>
               {subjects.map((subject) => (
                 <Pressable
@@ -136,13 +166,15 @@ export default function JsonImportScreen() {
               ))}
             </View>
           )}
+
           <Text style={styles.label}>Deck</Text>
           <TextInput
             value={deckName}
             onChangeText={setDeckName}
             style={styles.smallInput}
-            placeholder="Create or name a deck"
+            placeholder="Deck name (e.g. Chapter 1)"
           />
+
           {decks.length > 0 && (
             <View style={styles.chips}>
               {decks.map((deck) => (
@@ -159,6 +191,7 @@ export default function JsonImportScreen() {
               ))}
             </View>
           )}
+
           <Pressable
             disabled={importing || !subjectName.trim() || !deckName.trim()}
             onPress={() => void submit()}
@@ -178,6 +211,7 @@ export default function JsonImportScreen() {
     </ScrollView>
   );
 }
+
 const styles = StyleSheet.create({
   screen: { padding: 20, gap: 12, backgroundColor: "#FFF9F2", flexGrow: 1 },
   title: { fontSize: 26, fontWeight: "800", color: "#3E2B23" },
