@@ -91,7 +91,7 @@ export function SidebarDrawer({
             </Text>
           </Pressable>
 
-          {item("Notification Settings", "/settings/notifications" as Href)}
+          {item("Settings", "/settings" as Href)}
         </ScrollView>
       </View>
     </Modal>

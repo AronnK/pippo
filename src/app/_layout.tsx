@@ -42,8 +42,16 @@ export default function RootLayout() {
             options={{ title: "Import JSON" }}
           />
           <Stack.Screen
+            name="settings/index"
+            options={{ title: "Settings" }}
+          />
+          <Stack.Screen
             name="settings/notifications"
             options={{ title: "Notification settings" }}
+          />
+          <Stack.Screen
+            name="settings/backup"
+            options={{ title: "Backup & restore" }}
           />
           <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
           <Stack.Screen name="timer" options={{ title: "Study Timer" }} />
