@@ -14,12 +14,38 @@ export function localDate(date = new Date()) {
   return offsetDate.toISOString().slice(0, 10);
 }
 
+// 'YYYY-MM-DD' in the caller's own timezone, not UTC.
+export function dayStart(date: string) {
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day).getTime();
+}
+
 export async function getSubjects(db: SQLiteDatabase) {
   return db.getAllAsync<Subject>('SELECT * FROM subjects ORDER BY name COLLATE NOCASE');
 }
 
 export async function getDecks(db: SQLiteDatabase, subjectId: number) {
   return db.getAllAsync<Deck>('SELECT * FROM decks WHERE subject_id = ? ORDER BY name COLLATE NOCASE', subjectId);
+}
+
+export async function getSubjectStats(db: SQLiteDatabase) {
+  return db.getAllAsync<{
+    id: number;
+    name: string;
+    decks: number;
+    cards: number;
+    mcqs: number;
+    weak: number;
+  }>(
+    `SELECT s.id, s.name,
+            (SELECT COUNT(*) FROM decks d WHERE d.subject_id = s.id) AS decks,
+            (SELECT COUNT(*) FROM cards c JOIN decks d ON d.id = c.deck_id WHERE d.subject_id = s.id) AS cards,
+            (SELECT COUNT(*) FROM mcqs m JOIN decks d ON d.id = m.deck_id WHERE d.subject_id = s.id) AS mcqs,
+            (SELECT COUNT(*) FROM weak_cards w JOIN cards c ON c.id = w.card_id JOIN decks d ON d.id = c.deck_id WHERE d.subject_id = s.id) +
+            (SELECT COUNT(*) FROM weak_mcqs w JOIN mcqs m ON m.id = w.mcq_id JOIN decks d ON d.id = m.deck_id WHERE d.subject_id = s.id) AS weak
+     FROM subjects s
+     ORDER BY s.name COLLATE NOCASE`,
+  );
 }
 
 export async function getDecksWithCounts(db: SQLiteDatabase) {

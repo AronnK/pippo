@@ -41,10 +41,7 @@ export default function RootLayout() {
             name="import/json-import"
             options={{ title: "Import JSON" }}
           />
-          <Stack.Screen
-            name="settings/index"
-            options={{ title: "Settings" }}
-          />
+          <Stack.Screen name="settings/index" options={{ title: "Settings" }} />
           <Stack.Screen
             name="settings/notifications"
             options={{ title: "Notification settings" }}
@@ -53,7 +50,11 @@ export default function RootLayout() {
             name="settings/backup"
             options={{ title: "Backup & restore" }}
           />
-          <Stack.Screen name="calendar" options={{ title: "Calendar" }} />
+          <Stack.Screen name="progress/index" options={{ title: "Progress" }} />
+          <Stack.Screen
+            name="progress/statistics"
+            options={{ title: "Statistics" }}
+          />
           <Stack.Screen name="timer" options={{ title: "Study Timer" }} />
           <Stack.Screen
             name="study/weak"

@@ -86,14 +86,18 @@ raw
   .run(today);
 const insert = (from, to, source) =>
   raw
-    .prepare("INSERT INTO study_sessions (start_time,end_time,source) VALUES (?,?,?)")
+    .prepare(
+      "INSERT INTO study_sessions (start_time,end_time,source) VALUES (?,?,?)",
+    )
     .run(start(from), start(to), source);
 insert(0, 40, "manual");
 insert(30, 60, "deck_flashcards");
 await study.rebuildStudySeconds(db);
 const stats = () =>
   raw
-    .prepare("SELECT study_seconds,items_completed FROM daily_stats WHERE date=?")
+    .prepare(
+      "SELECT study_seconds,items_completed FROM daily_stats WHERE date=?",
+    )
     .get(today);
 check(
   "a manual timer and card time on the same day count once",
@@ -127,14 +131,38 @@ check(
 );
 check(
   "an open session is not counted yet",
-  raw.prepare("SELECT study_seconds s FROM daily_stats WHERE date=?").get(today).s,
+  raw.prepare("SELECT study_seconds s FROM daily_stats WHERE date=?").get(today)
+    .s,
   80 * 60,
 );
 await study.stopSession(db, "manual");
 check("stopping the timer closes it", await study.getManualTimer(db), null);
+check(
+  "once everything is closed the live total is the stored one",
+  await study.todayStudySeconds(db),
+  stats().study_seconds,
+);
+// The manual timer opens its session "now", so it contributes no elapsed time
+// until the clock moves; backdate one to see it counted while still open.
+await study.startSession(db, "deck_mcqs");
+raw
+  .prepare(
+    "UPDATE study_sessions SET start_time=? WHERE source='deck_mcqs' AND end_time IS NULL",
+  )
+  .run(new Date(Date.now() - 5 * 60_000).toISOString());
+check(
+  "a session still running adds to today's live total",
+  (await study.todayStudySeconds(db)) > stats().study_seconds,
+  true,
+);
+await study.stopSession(db, "deck_mcqs");
 
 const summary = await study.studyTimeSummary(db);
-check("today's summary reads back the merged total", summary.today, stats().study_seconds);
+check(
+  "today's summary reads back the merged total",
+  summary.today,
+  stats().study_seconds,
+);
 raw
   .prepare(
     "INSERT INTO daily_stats (date,items_completed,flashcards_completed,mcqs_completed,study_seconds) VALUES (?,0,0,0,600)",
@@ -143,7 +171,9 @@ raw
 await study.rebuildStudySeconds(db);
 check(
   "rebuilding today leaves other days untouched",
-  raw.prepare("SELECT study_seconds s FROM daily_stats WHERE date='2000-01-01'").get().s,
+  raw
+    .prepare("SELECT study_seconds s FROM daily_stats WHERE date='2000-01-01'")
+    .get().s,
   600,
 );
 check(
@@ -192,14 +222,10 @@ check(
   [breakdown.items, breakdown.flashcards, breakdown.mcqs],
   [50, 50, 0],
 );
-check(
-  "the day splits its time by subject",
-  breakdown.subjects,
-  [
-    { name: "Pharmacology", seconds: 70 * 60 },
-    { name: "Anatomy", seconds: 30 * 60 },
-  ],
-);
+check("the day splits its time by subject", breakdown.subjects, [
+  { name: "Pharmacology", seconds: 70 * 60 },
+  { name: "Anatomy", seconds: 30 * 60 },
+]);
 check(
   "timer time is not blamed on any subject",
   breakdown.subjects.reduce((sum, row) => sum + row.seconds, 0) <
@@ -287,7 +313,11 @@ check(
   [growth.studiedDays, growth.windowDays],
   [2, 30],
 );
-const week = await study.dailySeries(history.db, study.shiftDate(today, -6), today);
+const week = await study.dailySeries(
+  history.db,
+  study.shiftDate(today, -6),
+  today,
+);
 check("a week always has seven days", week.length, 7);
 check(
   "the series is oldest first and ends today",
@@ -302,6 +332,10 @@ check(
 check("today's seconds carry into the series", week.at(-1).seconds, 7200);
 check("up is a positive percentage", study.percentChange(120, 100), 20);
 check("down is negative", study.percentChange(50, 100), -50);
-check("a week with no previous baseline has no percentage", study.percentChange(50, 0), null);
+check(
+  "a week with no previous baseline has no percentage",
+  study.percentChange(50, 0),
+  null,
+);
 
 finish();

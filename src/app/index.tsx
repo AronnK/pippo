@@ -8,6 +8,7 @@ import { PippoCharacter } from "@/components/PippoCharacter";
 import { SidebarDrawer } from "@/components/SidebarDrawer";
 import { DAILY_GOAL } from "@/constants/goals";
 import { PIPPO_MESSAGES } from "@/constants/pippoMessages";
+import { formatDuration } from "@/utils/format";
 import { getTodayStats } from "@/database/queries/study";
 import type { Streak } from "@/database/types";
 import { scheduleEnabledNotifications } from "@/services/notificationService";
@@ -22,6 +23,7 @@ import {
   getManualTimer,
   startSession,
   stopSession,
+  todayStudySeconds,
 } from "@/services/studyTimeService";
 
 const EMPTY_STREAK: Streak = {
@@ -43,6 +45,7 @@ export default function HomeScreen() {
   const [menu, setMenu] = useState(false);
   const [timer, setTimer] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [studiedToday, setStudiedToday] = useState(0);
   const [messageSeed, setMessageSeed] = useState(0);
   const alerted = useRef(false);
 
@@ -53,6 +56,7 @@ export default function HomeScreen() {
     ]);
     const milestone = await consumeUnseenMilestone(db);
     setCompleted(stats.items_completed);
+    void todayStudySeconds(db).then(setStudiedToday);
     setStreak(
       milestone
         ? { ...settledStreak, last_celebrated_milestone: milestone }
@@ -121,6 +125,7 @@ export default function HomeScreen() {
       await startSession(db, "manual");
       setTimer((await getManualTimer(db))?.start_time ?? null);
     }
+    setStudiedToday(await todayStudySeconds(db));
   };
 
   const risk =
@@ -164,6 +169,10 @@ export default function HomeScreen() {
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${percentage}%` }]} />
         </View>
+
+        <Text style={styles.studied}>
+          Studied today: {formatDuration(studiedToday)}
+        </Text>
 
         <Text style={styles.freezes}>
           ❄️ {streak.freeze_count} streak freeze
@@ -245,6 +254,7 @@ const styles = StyleSheet.create({
   },
   fill: { height: "100%", backgroundColor: "#E9875C", borderRadius: 10 },
   freezes: { color: "#5B7790", fontWeight: "600" },
+  studied: { color: "#6C564D", fontWeight: "600" },
   primary: {
     backgroundColor: "#D96642",
     padding: 18,

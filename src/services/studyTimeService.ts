@@ -1,4 +1,4 @@
-import { localDate } from "@/database/queries/study";
+import { dayStart, localDate } from "@/database/queries/study";
 import type { SQLiteDatabase } from "expo-sqlite";
 
 export type Interval = { start: number; end: number };
@@ -11,11 +11,6 @@ const secondsOf = (intervals: Interval[]) =>
     (sum, item) => sum + Math.round((item.end - item.start) / 1000),
     0,
   );
-
-export function dayStart(date: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  return new Date(year, month - 1, day).getTime();
-}
 
 export function shiftDate(date: string, days: number) {
   const result = new Date(dayStart(date));
@@ -75,7 +70,10 @@ export async function startSession(
     source,
   );
   if (open) {
-    if (open.subject_id === (subjectId ?? null) && open.deck_id === (deckId ?? null))
+    if (
+      open.subject_id === (subjectId ?? null) &&
+      open.deck_id === (deckId ?? null)
+    )
       return;
     // She moved to another deck mid-session: end the previous interval here so
     // each subject's time stays its own (spec 3 keeps subject_id/deck_id for this).
@@ -147,9 +145,32 @@ export async function rebuildStudySeconds(db: SQLiteDatabase) {
       secondsOf(intervals),
     );
 }
+// Study time banked for today, including the sessions still running right now.
+// Home shows this while she studies, so it must not wait for a stop.
+export async function todayStudySeconds(db: SQLiteDatabase) {
+  const from = dayStart(localDate());
+  const now = Date.now();
+  const intervals: Interval[] = [];
+  for (const row of await db.getAllAsync<{
+    start_time: string;
+    end_time: string | null;
+  }>("SELECT start_time, end_time FROM study_sessions")) {
+    const start = Math.max(new Date(row.start_time).getTime(), from);
+    const end = Math.min(
+      row.end_time ? new Date(row.end_time).getTime() : now,
+      now,
+    );
+    if (end > start) intervals.push({ start, end });
+  }
+  return secondsOf(intervals);
+}
 export async function studyTimeSummary(db: SQLiteDatabase) {
-  const rows = await db.getAllAsync<{ date: string; study_seconds: number }>(
-    "SELECT date, study_seconds FROM daily_stats ORDER BY date",
+  const rows = await db.getAllAsync<{
+    date: string;
+    study_seconds: number;
+    items_completed: number;
+  }>(
+    "SELECT date, study_seconds, items_completed FROM daily_stats ORDER BY date",
   );
   const today = localDate();
   const monthStart = `${today.slice(0, 8)}01`;
