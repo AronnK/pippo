@@ -1,32 +1,10 @@
-import { DatabaseSync } from "node:sqlite";
+import { check, finish, migratedDb } from "./harness.mjs";
 
-const { DATABASE_VERSION, MIGRATIONS } = await import("@/database/schema");
+const { DATABASE_VERSION } = await import("@/database/schema");
 const backup = await import("@/services/backupService");
 const shared = (await import("expo-sharing")).shared;
 
-const raw = new DatabaseSync(":memory:");
-raw.exec("PRAGMA foreign_keys = ON;");
-for (const migration of MIGRATIONS) raw.exec(migration.sql);
-
-// expo-sqlite's shape, over node:sqlite, so the service runs unchanged.
-const asSqlite = (d) => ({
-  getAllAsync: (sql, ...params) => Promise.resolve(d.prepare(sql).all(...params)),
-  getFirstAsync: (sql, ...params) =>
-    Promise.resolve(d.prepare(sql).get(...params) ?? null),
-  runAsync: (sql, ...params) => Promise.resolve(d.prepare(sql).run(...params)),
-  execAsync: (sql) => Promise.resolve(d.exec(sql)),
-});
-const db = asSqlite(raw);
-db.withExclusiveTransactionAsync = async (callback) => {
-  raw.exec("BEGIN IMMEDIATE");
-  try {
-    await callback(asSqlite(raw));
-    raw.exec("COMMIT");
-  } catch (error) {
-    raw.exec("ROLLBACK");
-    throw error;
-  }
-};
+const { raw, db } = migratedDb();
 
 const NOW = "2026-09-26T10:00:00.000Z";
 const SEED = [
@@ -66,14 +44,6 @@ const SEED = [
 ];
 for (const [sql, params] of SEED) raw.prepare(sql).run(...params);
 
-let failures = 0;
-const check = (label, actual, expected) => {
-  const ok = JSON.stringify(actual) === JSON.stringify(expected);
-  if (!ok) failures++;
-  console.log(
-    `${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : `  got=${JSON.stringify(actual)} want=${JSON.stringify(expected)}`}`,
-  );
-};
 const state = () => ({
   cards: raw.prepare("SELECT COUNT(*) c FROM cards").get().c,
   weak: raw.prepare("SELECT COUNT(*) c FROM weak_cards").get().c,
@@ -271,5 +241,4 @@ check(
   [1350, 420],
 );
 
-console.log(failures ? `\n${failures} CHECK(S) FAILED` : "\nall checks passed");
-process.exit(failures ? 1 : 0);
+finish();

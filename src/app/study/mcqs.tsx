@@ -33,7 +33,7 @@ export default function McqsScreen() {
   const [selected, setSelected] = useState<number | null>(null);
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
-  useStudyTracking("deck_mcqs", undefined, id);
+  const { noteActivity } = useStudyTracking("deck_mcqs", undefined, id);
   useEffect(() => {
     void Promise.all([getMcqs(db, id), getTodayStats(db)]).then(
       ([mcqs, stats]) => {
@@ -44,6 +44,7 @@ export default function McqsScreen() {
     );
   }, [db, id]);
   const choose = async (choice: number) => {
+    noteActivity();
     if (selected !== null || busy) return;
     setSelected(choice);
     const current = questions[index];
@@ -59,6 +60,7 @@ export default function McqsScreen() {
     }
   };
   const next = () => {
+    noteActivity();
     if (busy) return;
     setSelected(null);
     setIndex((value) => value + 1);

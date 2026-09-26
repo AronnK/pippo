@@ -1,19 +1,8 @@
-import { DatabaseSync } from "node:sqlite";
+import { check, finish, migratedDb } from "./harness.mjs";
 
-const { MIGRATIONS } = await import("@/database/schema");
 const quality = await import("@/database/queries/quality");
 
-const raw = new DatabaseSync(":memory:");
-raw.exec("PRAGMA foreign_keys = ON;");
-for (const migration of MIGRATIONS) raw.exec(migration.sql);
-
-const db = {
-  getAllAsync: (sql, ...params) => Promise.resolve(raw.prepare(sql).all(...params)),
-  getFirstAsync: (sql, ...params) =>
-    Promise.resolve(raw.prepare(sql).get(...params) ?? null),
-  runAsync: (sql, ...params) => Promise.resolve(raw.prepare(sql).run(...params)),
-  execAsync: (sql) => Promise.resolve(raw.exec(sql)),
-};
+const { raw, db } = migratedDb();
 
 const NOW = new Date();
 const ago = (days) => new Date(NOW.getTime() - days * 86_400_000).toISOString();
@@ -27,15 +16,6 @@ const SEED = [
   ["INSERT INTO weak_mcqs (mcq_id,marked_at) VALUES (301,?)", [ago(1)]],
 ];
 for (const [sql, params] of SEED) raw.prepare(sql).run(...params);
-
-let failures = 0;
-const check = (label, actual, expected) => {
-  const ok = JSON.stringify(actual) === JSON.stringify(expected);
-  if (!ok) failures++;
-  console.log(
-    `${ok ? "PASS" : "FAIL"}  ${label}${ok ? "" : `  got=${JSON.stringify(actual)} want=${JSON.stringify(expected)}`}`,
-  );
-};
 
 console.log("random quiz scope");
 const everything = await quality.selectRandomItems(db, {}, 100);
@@ -118,5 +98,4 @@ check(
   [1, 1],
 );
 
-console.log(failures ? `\n${failures} CHECK(S) FAILED` : "\nall checks passed");
-process.exit(failures ? 1 : 0);
+finish();

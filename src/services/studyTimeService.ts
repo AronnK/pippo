@@ -2,6 +2,10 @@ import { localDate } from "@/database/queries/study";
 import type { SQLiteDatabase } from "expo-sqlite";
 
 export type Interval = { start: number; end: number };
+
+// Spec 4.7: a study screen nobody touches for this long stops counting time.
+export const IDLE_TIMEOUT_MS = 150_000;
+
 export function mergeIntervals(intervals: Interval[]) {
   const sorted = intervals
     .filter((x) => x.end > x.start)

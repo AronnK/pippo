@@ -46,9 +46,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test": "npm run test:backup && npm run test:selection",
+    "test": "npm run test:backup && npm run test:selection && npm run test:study-time",
     "test:backup": "node --experimental-strip-types --import ./tests/register.mjs ./tests/backup.test.mjs",
     "test:selection": "node --experimental-strip-types --import ./tests/register.mjs ./tests/selection.test.mjs",
+    "test:study-time": "node --experimental-strip-types --import ./tests/register.mjs ./tests/studyTime.test.mjs",
     "typecheck": "tsc --noEmit"
   },
   "private": true

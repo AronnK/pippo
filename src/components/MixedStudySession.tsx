@@ -20,12 +20,13 @@ export function MixedStudySession({
   onDone?: (remaining: number) => void;
   source?: string;
 }) {
-  useStudyTracking(source);
+  const { noteActivity } = useStudyTracking(source);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const advance = async (item: StudyItem, outcome: boolean) => {
+    noteActivity();
     if (busy) return;
     setBusy(true);
     try {
@@ -87,7 +88,13 @@ export function MixedStudySession({
             </View>
           </>
         ) : (
-          <Pressable onPress={() => setRevealed(true)} style={styles.action}>
+          <Pressable
+            onPress={() => {
+              noteActivity();
+              setRevealed(true);
+            }}
+            style={styles.action}
+          >
             <Text style={styles.actionText}>Show answer</Text>
           </Pressable>
         )}
@@ -105,7 +112,10 @@ export function MixedStudySession({
         <Pressable
           key={optionIndex}
           disabled={selected !== null}
-          onPress={() => setSelected(optionIndex)}
+          onPress={() => {
+            noteActivity();
+            setSelected(optionIndex);
+          }}
           style={styles.option}
         >
           <Text>

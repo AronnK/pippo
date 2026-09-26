@@ -33,7 +33,7 @@ export default function FlashcardsScreen() {
   const [revealed, setRevealed] = useState(false);
   const [count, setCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
-  useStudyTracking("deck_flashcards", undefined, id);
+  const { noteActivity } = useStudyTracking("deck_flashcards", undefined, id);
   useEffect(() => {
     void Promise.all([getFlashcards(db, id), getTodayStats(db)]).then(
       ([loadedCards, stats]) => {
@@ -44,6 +44,7 @@ export default function FlashcardsScreen() {
     );
   }, [db, id]);
   const answer = async (knewIt: boolean) => {
+    noteActivity();
     if (submitting) return;
     setSubmitting(true);
     try {
@@ -126,7 +127,13 @@ export default function FlashcardsScreen() {
           </View>
         </>
       ) : (
-        <Pressable onPress={() => setRevealed(true)} style={styles.reveal}>
+        <Pressable
+          onPress={() => {
+            noteActivity();
+            setRevealed(true);
+          }}
+          style={styles.reveal}
+        >
           <Text style={styles.revealText}>Show answer</Text>
         </Pressable>
       )}
