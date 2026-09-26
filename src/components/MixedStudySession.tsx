@@ -20,11 +20,18 @@ export function MixedStudySession({
   onDone?: (remaining: number) => void;
   source?: string;
 }) {
-  const { noteActivity } = useStudyTracking(source);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  // Time follows whatever she is answering, so a mixed session still lands on
+  // the right subject in the day breakdown.
+  const current = items[index] ?? items[items.length - 1];
+  const { noteActivity } = useStudyTracking(
+    source,
+    current?.subject_id,
+    current?.deck_id,
+  );
   const advance = async (item: StudyItem, outcome: boolean) => {
     noteActivity();
     if (busy) return;
