@@ -1,10 +1,18 @@
 import { Link, Stack, useFocusEffect, type Href } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PippoCharacter } from "@/components/PippoCharacter";
+import { LaundryToggle } from "@/components/LaundryToggle";
 import { SidebarDrawer } from "@/components/SidebarDrawer";
 import { DAILY_GOAL } from "@/constants/goals";
 import { milestoneMessage, PIPPO_MESSAGES } from "@/constants/personalMessages";
@@ -134,12 +142,20 @@ export default function HomeScreen() {
     new Date().getHours() >= 20;
 
   return (
-    <View
-      style={[styles.screen, { paddingTop: Math.max(insets.top, 20) + 16 }]}
+    <ScrollView
+      contentContainerStyle={[
+        styles.screen,
+        { paddingTop: Math.max(insets.top, 20) + 16 },
+      ]}
+      showsVerticalScrollIndicator={false}
     >
       <Stack.Screen options={{ headerShown: false }} />
       <View style={styles.header}>
-        <Pressable onPress={() => setMenu(true)}>
+        <Pressable
+          onPress={() => setMenu(true)}
+          hitSlop={8}
+          style={({ pressed }) => pressed && styles.pressed}
+        >
           <Text style={styles.settings}>☰ Menu</Text>
         </Pressable>
         <Text style={styles.title}>Pippo</Text>
@@ -187,12 +203,17 @@ export default function HomeScreen() {
       </View>
 
       <Link href={"/study" as Href} asChild>
-        <Pressable style={styles.primary}>
+        <Pressable
+          style={({ pressed }) => [styles.primary, pressed && styles.pressed]}
+        >
           <Text style={styles.primaryText}>Continue Studying</Text>
         </Pressable>
       </Link>
 
-      <Pressable onPress={() => void timerToggle()} style={styles.timer}>
+      <Pressable
+        onPress={() => void timerToggle()}
+        style={({ pressed }) => [styles.timer, pressed && styles.pressed]}
+      >
         <Text style={styles.timerText}>
           {timer
             ? `⏸ STOP STUDY TIMER · ${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
@@ -200,9 +221,13 @@ export default function HomeScreen() {
         </Text>
       </Pressable>
 
+      <LaundryToggle style={styles.laundry} textStyle={styles.laundryText} />
+
       {risk && (
         <Link href={"/study/emergency" as Href} asChild>
-          <Pressable style={styles.danger}>
+          <Pressable
+            style={({ pressed }) => [styles.danger, pressed && styles.pressed]}
+          >
             <Text style={styles.dangerText}>I DON’T WANT PIPPO TO DIE</Text>
           </Pressable>
         </Link>
@@ -210,18 +235,20 @@ export default function HomeScreen() {
 
       {/* RENDER UNCONDITIONALLY - Modal handles the visibility internally */}
       <SidebarDrawer visible={menu} onClose={() => setMenu(false)} />
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flexGrow: 1,
+    justifyContent: "center",
     padding: 20,
     paddingBottom: 42,
     gap: 16,
     backgroundColor: "#FFF9F2",
   },
+  pressed: { opacity: 0.75 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -276,6 +303,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   timerText: { color: "#9E452C", fontWeight: "800" },
+  laundry: {
+    borderWidth: 1,
+    borderColor: "#7B9AA8",
+    backgroundColor: "#EFF5F8",
+    padding: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  laundryText: { color: "#4F6E7B", fontWeight: "800", fontSize: 13 },
   danger: {
     borderWidth: 1,
     borderColor: "#B95750",

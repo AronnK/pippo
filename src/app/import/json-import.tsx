@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -41,22 +41,21 @@ export default function JsonImportScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      void getSubjects(db).then(setSubjects);
-    }, [db]),
+      void getSubjects(db).then((rows) => {
+        setSubjects(rows);
+        // A prefilled subject means she came from that subject's own screens,
+        // so its decks are already the ones she wants to pick from.
+        const prefilled =
+          prefillSubject &&
+          rows.find(
+            (row) => row.name.toLowerCase() === prefillSubject.toLowerCase(),
+          );
+        if (!prefilled) return;
+        setSelectedSubjectId(prefilled.id);
+        void getDecks(db, prefilled.id).then(setDecks);
+      });
+    }, [db, prefillSubject]),
   );
-
-  // If a prefilled subject is passed, try to pre-fetch its decks automatically
-  useEffect(() => {
-    if (prefillSubject && subjects.length > 0) {
-      const existing = subjects.find(
-        (s) => s.name.toLowerCase() === prefillSubject.toLowerCase(),
-      );
-      if (existing) {
-        setSelectedSubjectId(existing.id);
-        void getDecks(db, existing.id).then(setDecks);
-      }
-    }
-  }, [prefillSubject, subjects, db]);
 
   const selectSubject = async (subject: Subject) => {
     setSelectedSubjectId(subject.id);

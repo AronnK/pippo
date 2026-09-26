@@ -1,16 +1,9 @@
 import { getSubjects } from "@/database/queries/study";
-import type { QuietHours } from "@/database/types";
-import {
-  getLaundryReminder,
-  getQuietHours,
-  setLaundryReminder,
-} from "@/services/notificationService";
-import { formatMinute } from "@/utils/format";
+import { LaundryToggle } from "@/components/LaundryToggle";
 import { Link, type Href } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -28,53 +21,12 @@ export function SidebarDrawer({
 }) {
   const db = useSQLiteContext();
   const [subjects, setSubjects] = useState<{ id: number; name: string }[]>([]);
-  const [active, setActive] = useState(false);
-  const [allNight, setAllNight] = useState(false);
-  const [quiet, setQuiet] = useState<QuietHours | null>(null);
 
   useEffect(() => {
-    if (visible && db) {
-      void Promise.all([
-        getSubjects(db),
-        getLaundryReminder(db),
-        getQuietHours(db),
-      ]).then(([s, l, q]) => {
-        setSubjects(s);
-        setActive(Boolean(l.is_active));
-        setAllNight(l.honor_quiet_hours !== 1);
-        setQuiet(q);
-      });
-    }
+    if (visible && db) void getSubjects(db).then(setSubjects);
   }, [visible, db]);
 
   if (!db) return null;
-
-  const armLaundry = () => {
-    const window =
-      quiet && quiet.enabled
-        ? `Pippo goes quiet between ${formatMinute(quiet.startMinute)} and ${formatMinute(quiet.endMinute)}.`
-        : "Quiet hours are off right now.";
-    onClose();
-    Alert.alert("How often should Pippo nag?", window, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "All night too",
-        onPress: () =>
-          void setLaundryReminder(db, true, false).then((l) => {
-            setActive(Boolean(l.is_active));
-            setAllNight(l.honor_quiet_hours !== 1);
-          }),
-      },
-      {
-        text: "Only my waking hours",
-        onPress: () =>
-          void setLaundryReminder(db, true, true).then((l) => {
-            setActive(Boolean(l.is_active));
-            setAllNight(l.honor_quiet_hours !== 1);
-          }),
-      },
-    ]);
-  };
 
   const item = (label: string, href: Href) => (
     <Link
@@ -82,7 +34,10 @@ export function SidebarDrawer({
       asChild
       key={typeof href === "string" ? href : href.pathname}
     >
-      <Pressable onPress={onClose} style={styles.item}>
+      <Pressable
+        onPress={onClose}
+        style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+      >
         <Text>{label}</Text>
       </Pressable>
     </Link>
@@ -114,27 +69,10 @@ export function SidebarDrawer({
 
           <Text style={styles.section}>TOOLS</Text>
           {item("Progress", "/progress" as Href)}
-          {item("💌 A Note From Pippo", "/note" as Href)}
+          {item("A Note From Pippo", "/note" as Href)}
+          {item("Study Timer", "/timer" as Href)}
 
-          <Pressable
-            onPress={() => {
-              if (active) {
-                onClose();
-                void setLaundryReminder(db, false).then((l) => {
-                  setActive(Boolean(l.is_active));
-                  setAllNight(l.honor_quiet_hours !== 1);
-                });
-              } else armLaundry();
-            }}
-            style={styles.item}
-          >
-            <Text>
-              🧺{" "}
-              {active
-                ? `CLOTHES ARE SOAKING${allNight ? " · nagging all night" : " · daytime only"}`
-                : "I PUT MY CLOTHES TO SOAK"}
-            </Text>
-          </Pressable>
+          <LaundryToggle style={styles.item} />
 
           {item("Settings", "/settings" as Href)}
         </ScrollView>
@@ -163,5 +101,10 @@ const styles = StyleSheet.create({
     marginTop: 18,
     marginBottom: 5,
   },
-  item: { paddingVertical: 13, borderBottomWidth: 1, borderColor: "#EBDDD5" },
+  item: {
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderColor: "#EBDDD5",
+  },
+  pressed: { opacity: 0.6 },
 });
