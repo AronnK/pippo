@@ -9,7 +9,7 @@ export default function EmergencyScreen() {
   const [items, setItems] = useState<StudyItem[]>([]);
   const [remaining, setRemaining] = useState<number | null>(null);
   useEffect(() => {
-    void selectSurpriseItems(db, 5, true).then(setItems);
+    void selectSurpriseItems(db, 5).then(setItems);
   }, [db]);
   return (
     <View style={{ flex: 1 }}>

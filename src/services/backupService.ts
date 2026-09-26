@@ -13,10 +13,10 @@ type Table = { name: string; columns: string[]; since?: number };
 const TABLES: Table[] = [
   { name: "subjects", columns: ["id", "name", "created_at"] },
   { name: "decks", columns: ["id", "subject_id", "name", "created_at"] },
-  { name: "cards", columns: ["id", "deck_id", "question", "answer", "created_at"] },
+  { name: "cards", columns: ["id", "deck_id", "question", "answer", "created_at", "last_seen_at"] },
   {
     name: "mcqs",
-    columns: ["id", "deck_id", "question", "options_json", "correct_answer_index", "explanation", "created_at"],
+    columns: ["id", "deck_id", "question", "options_json", "correct_answer_index", "explanation", "created_at", "last_seen_at"],
   },
   { name: "weak_cards", columns: ["card_id", "marked_at"] },
   { name: "weak_mcqs", columns: ["mcq_id", "marked_at"] },

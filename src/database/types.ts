@@ -1,5 +1,6 @@
 export type Subject = { id: number; name: string; created_at: string };
 export type Deck = { id: number; subject_id: number; name: string; created_at: string };
+export type DeckSummary = Deck & { subject_name: string; items: number };
 export type Flashcard = { id: number; deck_id: number; question: string; answer: string };
 export type Mcq = {
   id: number;
@@ -37,4 +38,8 @@ export type NotificationConfig = {
 };
 export type QuietHours = { startMinute: number; endMinute: number; enabled: boolean };
 export type LaundryReminder = { is_active: number; started_at: string | null; honor_quiet_hours: number };
-export type StudyItem = ({ kind: 'flashcard'; id: number; question: string; answer: string } | { kind: 'mcq'; id: number; question: string; options_json: string; correct_answer_index: number; explanation: string });
+type StudyItemBase = { id: number; deck_id: number; subject_id: number; last_seen_at: string | null };
+export type StudyItem =
+  | (StudyItemBase & { kind: 'flashcard'; question: string; answer: string })
+  | (StudyItemBase & { kind: 'mcq'; question: string; options_json: string; correct_answer_index: number; explanation: string });
+export type StudyScope = { subjectId?: number; deckId?: number };

@@ -13,13 +13,11 @@ export function MixedStudySession({
   db,
   items,
   onDone,
-  reviewWeak = false,
   source = "surprise",
 }: {
   db: SQLiteDatabase;
   items: StudyItem[];
   onDone?: (remaining: number) => void;
-  reviewWeak?: boolean;
   source?: string;
 }) {
   useStudyTracking(source);

@@ -1,5 +1,5 @@
 export const DATABASE_NAME = 'pippo.db';
-export const DATABASE_VERSION = 4;
+export const DATABASE_VERSION = 5;
 
 export const CREATE_SCHEMA_SQL = `
   PRAGMA journal_mode = WAL;
@@ -123,9 +123,15 @@ export const PHASE_FOUR_MIGRATION_SQL = `
   ALTER TABLE laundry_reminder ADD COLUMN honor_quiet_hours INTEGER NOT NULL DEFAULT 0 CHECK(honor_quiet_hours IN (0, 1));
 `;
 
+export const PHASE_FIVE_MIGRATION_SQL = `
+  ALTER TABLE cards ADD COLUMN last_seen_at TEXT;
+  ALTER TABLE mcqs ADD COLUMN last_seen_at TEXT;
+`;
+
 export const MIGRATIONS = [
   { version: 1, sql: CREATE_SCHEMA_SQL },
   { version: 2, sql: PHASE_TWO_MIGRATION_SQL },
   { version: 3, sql: PHASE_THREE_MIGRATION_SQL },
   { version: 4, sql: PHASE_FOUR_MIGRATION_SQL },
+  { version: 5, sql: PHASE_FIVE_MIGRATION_SQL },
 ] as const;

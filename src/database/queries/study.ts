@@ -1,6 +1,13 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
-import type { DailyStats, Deck, Flashcard, Mcq, Subject } from '@/database/types';
+import type {
+  DailyStats,
+  Deck,
+  DeckSummary,
+  Flashcard,
+  Mcq,
+  Subject,
+} from '@/database/types';
 
 export function localDate(date = new Date()) {
   const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
@@ -13,6 +20,17 @@ export async function getSubjects(db: SQLiteDatabase) {
 
 export async function getDecks(db: SQLiteDatabase, subjectId: number) {
   return db.getAllAsync<Deck>('SELECT * FROM decks WHERE subject_id = ? ORDER BY name COLLATE NOCASE', subjectId);
+}
+
+export async function getDecksWithCounts(db: SQLiteDatabase) {
+  return db.getAllAsync<DeckSummary>(
+    `SELECT d.id, d.subject_id, d.name, d.created_at, s.name AS subject_name,
+            (SELECT COUNT(*) FROM cards c WHERE c.deck_id = d.id) +
+            (SELECT COUNT(*) FROM mcqs m WHERE m.deck_id = d.id) AS items
+     FROM decks d
+     JOIN subjects s ON s.id = d.subject_id
+     ORDER BY s.name COLLATE NOCASE, d.name COLLATE NOCASE`,
+  );
 }
 
 export async function getFlashcards(db: SQLiteDatabase, deckId: number) {

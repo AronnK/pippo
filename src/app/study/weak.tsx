@@ -24,7 +24,6 @@ export default function WeakScreen() {
       <MixedStudySession
         db={db}
         items={items}
-        reviewWeak
         source="weak_review"
         onDone={() => load()}
       />
