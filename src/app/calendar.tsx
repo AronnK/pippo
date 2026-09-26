@@ -1,3 +1,4 @@
+import { DAILY_GOAL } from "@/constants/goals";
 import type { Streak } from "@/database/types";
 import { getStreak } from "@/services/streakService";
 import {
@@ -31,7 +32,7 @@ export default function Calendar() {
   const load = useCallback(() => {
     void Promise.all([
       db.getAllAsync<{ date: string }>(
-        "SELECT date FROM daily_stats WHERE items_completed>=50",
+        `SELECT date FROM daily_stats WHERE items_completed>=${DAILY_GOAL}`,
       ),
       db.getFirstAsync<{ total: number; first: string | null }>(
         "SELECT COALESCE(SUM(items_completed),0) total,MIN(date) first FROM daily_stats",
@@ -79,7 +80,7 @@ export default function Calendar() {
         style={s.image}
         contentFit="contain"
       />
-      <Text style={s.hero}>Keep Calm You're Almost A Doctor, Dr. Puttus</Text>
+      <Text style={s.hero}>Keep Calm You’re Almost A Doctor, Dr. Puttus</Text>
       <View style={s.nav}>
         <Pressable onPress={() => setMonth(new Date(y, m - 1, 1))}>
           <Text>‹ Previous</Text>
@@ -123,7 +124,7 @@ export default function Calendar() {
         <Text>Total completed study items: {items}</Text>
         <Text>Total completed study days: {days.length}</Text>
         <Text>Available streak freezes: {streak?.freeze_count ?? 0}</Text>
-        <Text>This month's completed days: {thisMonth}</Text>
+        <Text>This month’s completed days: {thisMonth}</Text>
       </View>
       <View style={s.card}>
         <Text style={s.heading}>Study time</Text>

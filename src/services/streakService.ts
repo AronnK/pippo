@@ -1,5 +1,6 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import { DAILY_GOAL } from "@/constants/goals";
 import { localDate } from "@/database/queries/study";
 import type { Streak } from "@/database/types";
 
@@ -75,7 +76,7 @@ export async function completeTodayIfEligible(db: SQLiteDatabase) {
     "SELECT items_completed FROM daily_stats WHERE date = ?",
     today,
   );
-  if (!stats || stats.items_completed < 50)
+  if (!stats || stats.items_completed < DAILY_GOAL)
     return { streak: await getStreak(db), awardedMilestone: 0 };
 
   const reconciled = await reconcileMissedDays(db);

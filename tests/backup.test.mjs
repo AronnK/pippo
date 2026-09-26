@@ -1,19 +1,12 @@
 import { DatabaseSync } from "node:sqlite";
 
-const {
-  CREATE_SCHEMA_SQL,
-  DATABASE_VERSION,
-  PHASE_TWO_MIGRATION_SQL,
-  PHASE_THREE_MIGRATION_SQL,
-} = await import("@/database/schema");
+const { DATABASE_VERSION, MIGRATIONS } = await import("@/database/schema");
 const backup = await import("@/services/backupService");
 const shared = (await import("expo-sharing")).shared;
 
 const raw = new DatabaseSync(":memory:");
 raw.exec("PRAGMA foreign_keys = ON;");
-raw.exec(CREATE_SCHEMA_SQL);
-raw.exec(PHASE_TWO_MIGRATION_SQL);
-raw.exec(PHASE_THREE_MIGRATION_SQL);
+for (const migration of MIGRATIONS) raw.exec(migration.sql);
 
 // expo-sqlite's shape, over node:sqlite, so the service runs unchanged.
 const asSqlite = (d) => ({
@@ -62,6 +55,14 @@ const SEED = [
     "INSERT INTO import_history (id,imported_at,subject,deck,card_count) VALUES (1,?,'Pharmacology','Ch1',2)",
     [NOW],
   ],
+  [
+    "UPDATE laundry_reminder SET is_active=1, started_at=?, honor_quiet_hours=1 WHERE id=1",
+    [NOW],
+  ],
+  [
+    "UPDATE notification_config SET quiet_hours_enabled=1, quiet_start_minute=1320, quiet_end_minute=390 WHERE id=1",
+    [],
+  ],
 ];
 for (const [sql, params] of SEED) raw.prepare(sql).run(...params);
 
@@ -82,6 +83,15 @@ const state = () => ({
       .get()?.i ?? null,
   sessions: raw.prepare("SELECT COUNT(*) c FROM study_sessions").get().c,
 });
+const settings = () =>
+  raw
+    .prepare(
+      `SELECT (SELECT quiet_start_minute FROM notification_config WHERE id=1) quiet_start,
+              (SELECT quiet_end_minute FROM notification_config WHERE id=1) quiet_end,
+              (SELECT honor_quiet_hours FROM laundry_reminder WHERE id=1) laundry_honors_quiet,
+              (SELECT COUNT(*) FROM notification_settings WHERE category='weak_review') weak_review_toggle`,
+    )
+    .get();
 
 console.log("export");
 const fileName = await backup.exportBackup(db);
@@ -106,6 +116,11 @@ raw.prepare("DELETE FROM weak_cards").run();
 raw.prepare("DELETE FROM daily_stats").run();
 raw.prepare("UPDATE streak SET current_streak=0").run();
 raw.prepare(
+  "UPDATE notification_config SET quiet_hours_enabled=0, quiet_start_minute=0, quiet_end_minute=0",
+).run();
+raw.prepare("UPDATE laundry_reminder SET is_active=0, honor_quiet_hours=0").run();
+raw.prepare("DELETE FROM notification_settings WHERE category='weak_review'").run();
+raw.prepare(
   "INSERT INTO cards (id,deck_id,question,answer,created_at) VALUES (999,10,'stray','stray',?)",
 ).run(NOW);
 check("data really was destroyed before restore", state(), {
@@ -128,6 +143,12 @@ check(
   state(),
   { cards: 2, weak: 1, streak: 9, stats: 50, sessions: 1 },
 );
+check("restore brought the notification settings back", settings(), {
+  quiet_start: 1320,
+  quiet_end: 390,
+  laundry_honors_quiet: 1,
+  weak_review_toggle: 1,
+});
 check(
   "restore removed rows that only existed after export",
   raw.prepare("SELECT COUNT(*) c FROM cards WHERE id=999").get().c,
@@ -211,6 +232,24 @@ check(
 check("cards rolled back", raw.prepare("SELECT COUNT(*) c FROM cards").get().c, 2);
 check("streak rolled back", raw.prepare("SELECT current_streak s FROM streak WHERE id=1").get().s, 9);
 
+console.log("\nbackup from an older app version");
+const older = JSON.parse(asText);
+older.schema = 3;
+delete older.tables.notification_config;
+delete older.tables.laundry_reminder;
+raw.prepare(
+  "UPDATE notification_config SET quiet_hours_enabled=1, quiet_start_minute=1290, quiet_end_minute=405",
+).run();
+raw.prepare("DELETE FROM cards").run();
+const olderRows = await backup.restoreBackup(db, backup.parseBackup(JSON.stringify(older)));
+check("an older file still restores the data it has", raw.prepare("SELECT COUNT(*) c FROM cards").get().c, 2);
+check(
+  "quiet hours the file never knew about survived",
+  [settings().quiet_start, settings().quiet_end],
+  [1290, 405],
+);
+check("row count only covers tables in the file", olderRows < expectedRows, true);
+
 console.log("\nreset");
 await backup.clearAllData(db);
 check(
@@ -225,6 +264,11 @@ check(
   "streak singleton row stays usable",
   raw.prepare("SELECT current_streak s FROM streak WHERE id=1").get().s,
   0,
+);
+check(
+  "quiet hours go back to defaults",
+  [settings().quiet_start, settings().quiet_end],
+  [1350, 420],
 );
 
 console.log(failures ? `\n${failures} CHECK(S) FAILED` : "\nall checks passed");

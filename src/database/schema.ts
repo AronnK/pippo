@@ -1,5 +1,5 @@
 export const DATABASE_NAME = 'pippo.db';
-export const DATABASE_VERSION = 3;
+export const DATABASE_VERSION = 4;
 
 export const CREATE_SCHEMA_SQL = `
   PRAGMA journal_mode = WAL;
@@ -110,3 +110,22 @@ export const PHASE_TWO_MIGRATION_SQL = `
 export const PHASE_THREE_MIGRATION_SQL = `
   INSERT OR IGNORE INTO notification_settings (category, is_enabled) VALUES ('keep_calm', 1);
 `;
+
+export const PHASE_FOUR_MIGRATION_SQL = `
+  CREATE TABLE IF NOT EXISTS notification_config (
+    id INTEGER PRIMARY KEY NOT NULL CHECK(id = 1),
+    quiet_hours_enabled INTEGER NOT NULL DEFAULT 1 CHECK(quiet_hours_enabled IN (0, 1)),
+    quiet_start_minute INTEGER NOT NULL DEFAULT 1350 CHECK(quiet_start_minute BETWEEN 0 AND 1439),
+    quiet_end_minute INTEGER NOT NULL DEFAULT 420 CHECK(quiet_end_minute BETWEEN 0 AND 1439)
+  );
+  INSERT OR IGNORE INTO notification_config (id) VALUES (1);
+  INSERT OR IGNORE INTO notification_settings (category, is_enabled) VALUES ('weak_review', 1);
+  ALTER TABLE laundry_reminder ADD COLUMN honor_quiet_hours INTEGER NOT NULL DEFAULT 0 CHECK(honor_quiet_hours IN (0, 1));
+`;
+
+export const MIGRATIONS = [
+  { version: 1, sql: CREATE_SCHEMA_SQL },
+  { version: 2, sql: PHASE_TWO_MIGRATION_SQL },
+  { version: 3, sql: PHASE_THREE_MIGRATION_SQL },
+  { version: 4, sql: PHASE_FOUR_MIGRATION_SQL },
+] as const;

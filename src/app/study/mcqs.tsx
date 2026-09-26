@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import { DAILY_GOAL } from "@/constants/goals";
 import { markMcq } from "@/database/queries/quality";
 import {
   getMcqs,
@@ -80,7 +81,9 @@ export default function McqsScreen() {
       <View style={styles.center}>
         <Text style={styles.done}>Quiz complete.</Text>
         <Text>You completed all {questions.length} MCQs in this deck.</Text>
-        <Text style={styles.count}>{count} / 50 items today</Text>
+        <Text style={styles.count}>
+          {count} / {DAILY_GOAL} items today
+        </Text>
       </View>
     );
   const mcq = questions[index];
@@ -90,7 +93,7 @@ export default function McqsScreen() {
     <View style={styles.screen}>
       <Text style={styles.deck}>{deckName}</Text>
       <Text style={styles.count}>
-        {count} / 50 items today · {index + 1} / {questions.length}
+        {count} / {DAILY_GOAL} items today · {index + 1} / {questions.length}
       </Text>
       <Text style={styles.question}>{mcq.question}</Text>
       {options.map((option, optionIndex) => (

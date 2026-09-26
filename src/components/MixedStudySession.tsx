@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { DAILY_GOAL } from "@/constants/goals";
 import { markFlashcard, markMcq } from "@/database/queries/quality";
 import { getTodayStats, recordCompletedItem } from "@/database/queries/study";
 import type { StudyItem } from "@/database/types";
@@ -39,7 +40,7 @@ export function MixedStudySession({
       setRevealed(false);
       setSelected(null);
       if (index + 1 >= items.length)
-        onDone?.(Math.max(0, 50 - stats.items_completed));
+        onDone?.(Math.max(0, DAILY_GOAL - stats.items_completed));
     } finally {
       setBusy(false);
     }

@@ -6,14 +6,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PippoCharacter } from "@/components/PippoCharacter";
 import { SidebarDrawer } from "@/components/SidebarDrawer";
+import { DAILY_GOAL } from "@/constants/goals";
 import { PIPPO_MESSAGES } from "@/constants/pippoMessages";
 import { getTodayStats } from "@/database/queries/study";
-import type { LaundryReminder, Streak } from "@/database/types";
-import {
-  getLaundryReminder,
-  scheduleEnabledNotifications,
-  setLaundryReminder,
-} from "@/services/notificationService";
+import type { Streak } from "@/database/types";
+import { scheduleEnabledNotifications } from "@/services/notificationService";
 import { getCharacterState, type PippoState } from "@/services/pippoState";
 import {
   consumeUnseenMilestone,
@@ -37,14 +34,11 @@ const EMPTY_STREAK: Streak = {
   pending_freeze_decision: 0,
   is_dead: 0,
 };
-const EMPTY_LAUNDRY: LaundryReminder = { is_active: 0, started_at: null };
-
 export default function HomeScreen() {
   const db = useSQLiteContext();
   const insets = useSafeAreaInsets();
   const [completed, setCompleted] = useState(0);
   const [streak, setStreak] = useState(EMPTY_STREAK);
-  const [laundry, setLaundry] = useState(EMPTY_LAUNDRY);
   const [celebrating, setCelebrating] = useState(false);
   const [menu, setMenu] = useState(false);
   const [timer, setTimer] = useState<string | null>(null);
@@ -53,10 +47,9 @@ export default function HomeScreen() {
   const alerted = useRef(false);
 
   const load = useCallback(async () => {
-    const [stats, settledStreak, reminder] = await Promise.all([
+    const [stats, settledStreak] = await Promise.all([
       getTodayStats(db),
       reconcileMissedDays(db),
-      getLaundryReminder(db),
     ]);
     const milestone = await consumeUnseenMilestone(db);
     setCompleted(stats.items_completed);
@@ -65,7 +58,6 @@ export default function HomeScreen() {
         ? { ...settledStreak, last_celebrated_milestone: milestone }
         : await getStreak(db),
     );
-    setLaundry(reminder);
     setCelebrating(Boolean(milestone));
     setMessageSeed(Math.floor(Math.random() * 1_000));
     void scheduleEnabledNotifications(db);
@@ -116,13 +108,10 @@ export default function HomeScreen() {
     return () => clearInterval(id);
   }, [timer]);
 
-  const toggleLaundry = async () =>
-    setLaundry(await setLaundryReminder(db, !laundry.is_active));
-
   const state: PippoState = getCharacterState(streak, completed, celebrating);
   const pool = PIPPO_MESSAGES[state];
   const message = pool[messageSeed % pool.length];
-  const percentage = Math.min(completed / 50, 1) * 100;
+  const percentage = Math.min(completed / DAILY_GOAL, 1) * 100;
 
   const timerToggle = async () => {
     if (timer) {
@@ -135,7 +124,9 @@ export default function HomeScreen() {
   };
 
   const risk =
-    completed < 50 && streak.current_streak > 0 && new Date().getHours() >= 20;
+    completed < DAILY_GOAL &&
+    streak.current_streak > 0 &&
+    new Date().getHours() >= 20;
 
   return (
     <View
@@ -167,7 +158,9 @@ export default function HomeScreen() {
           <Text style={styles.longest}>Best: {streak.longest_streak}</Text>
         </View>
 
-        <Text style={styles.progress}>{completed} / 50 items today</Text>
+        <Text style={styles.progress}>
+          {completed} / {DAILY_GOAL} items today
+        </Text>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${percentage}%` }]} />
         </View>

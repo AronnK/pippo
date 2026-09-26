@@ -1,3 +1,4 @@
+import { DAILY_GOAL } from "@/constants/goals";
 import type { Streak } from "@/database/types";
 
 export type PippoState =
@@ -21,9 +22,9 @@ export function getCharacterState(
   if (streak.pending_freeze_decision) return "pleading";
   if (isCelebrating) return "celebration";
   if (!streak.last_completed_date && todayProgress === 0) return "neutral";
-  if (todayProgress >= 50)
+  if (todayProgress >= DAILY_GOAL)
     return streak.current_streak >= 7 ? "very_happy" : "happy";
-  if (todayProgress >= 25) return "happy";
+  if (todayProgress >= DAILY_GOAL / 2) return "happy";
   if (streak.current_streak > 0) {
     if (hour >= 20) return "angry";
     return todayProgress > 0 ? "slightly_sad" : "sad";

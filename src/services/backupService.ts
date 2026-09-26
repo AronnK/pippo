@@ -5,9 +5,11 @@ import type { SQLiteBindValue, SQLiteDatabase } from "expo-sqlite";
 import { localDate } from "@/database/queries/study";
 import { DATABASE_VERSION } from "@/database/schema";
 
-type Table = { name: string; columns: string[] };
+type Table = { name: string; columns: string[]; since?: number };
 
 // Deletion happens in reverse order, so children must come after their parents.
+// `since` marks tables that only exist from a given schema version on; an older
+// backup file neither has to contain them nor gets to overwrite what is there.
 const TABLES: Table[] = [
   { name: "subjects", columns: ["id", "name", "created_at"] },
   { name: "decks", columns: ["id", "subject_id", "name", "created_at"] },
@@ -28,6 +30,7 @@ const TABLES: Table[] = [
   },
   {
     name: "streak",
+    since: 2,
     columns: [
       "id",
       "current_streak",
@@ -40,10 +43,22 @@ const TABLES: Table[] = [
       "is_dead",
     ],
   },
-  { name: "notification_settings", columns: ["category", "is_enabled"] },
-  { name: "laundry_reminder", columns: ["id", "is_active", "started_at"] },
+  { name: "notification_settings", since: 2, columns: ["category", "is_enabled"] },
+  {
+    name: "laundry_reminder",
+    since: 4,
+    columns: ["id", "is_active", "started_at", "honor_quiet_hours"],
+  },
+  {
+    name: "notification_config",
+    since: 4,
+    columns: ["id", "quiet_hours_enabled", "quiet_start_minute", "quiet_end_minute"],
+  },
   { name: "import_history", columns: ["id", "imported_at", "subject", "deck", "card_count"] },
 ];
+
+const present = (payload: BackupPayload) =>
+  TABLES.filter((table) => Array.isArray(payload.tables[table.name]));
 
 export type BackupPayload = {
   app: "pippo";
@@ -106,6 +121,7 @@ export function parseBackup(text: string): BackupPayload {
   if (!payload.tables || typeof payload.tables !== "object")
     throw new Error("This backup has no data tables in it.");
   for (const table of TABLES) {
+    if ((table.since ?? 1) > payload.schema) continue;
     const rows = payload.tables[table.name];
     if (!Array.isArray(rows)) throw new Error(`This backup is missing its ${table.name} data.`);
     if (rows.some((row) => !row || typeof row !== "object" || Array.isArray(row)))
@@ -131,13 +147,16 @@ function insertRows(tx: SQLiteDatabase, table: Table, rows: Record<string, unkno
 }
 
 export async function restoreBackup(db: SQLiteDatabase, payload: BackupPayload) {
+  const tables = present(payload);
   await db.withExclusiveTransactionAsync(async (tx) => {
-    for (const table of [...TABLES].reverse()) await tx.runAsync(`DELETE FROM ${table.name}`);
-    for (const table of TABLES) await Promise.all(insertRows(tx, table, payload.tables[table.name]));
+    for (const table of [...tables].reverse()) await tx.runAsync(`DELETE FROM ${table.name}`);
+    for (const table of tables)
+      await Promise.all(insertRows(tx, table, payload.tables[table.name]));
     await tx.runAsync("INSERT OR IGNORE INTO streak (id) VALUES (1)");
     await tx.runAsync("INSERT OR IGNORE INTO laundry_reminder (id) VALUES (1)");
+    await tx.runAsync("INSERT OR IGNORE INTO notification_config (id) VALUES (1)");
   });
-  return TABLES.reduce((sum, table) => sum + payload.tables[table.name].length, 0);
+  return tables.reduce((sum, table) => sum + payload.tables[table.name].length, 0);
 }
 
 export async function clearAllData(db: SQLiteDatabase) {
@@ -145,5 +164,6 @@ export async function clearAllData(db: SQLiteDatabase) {
     for (const table of [...TABLES].reverse()) await tx.runAsync(`DELETE FROM ${table.name}`);
     await tx.runAsync("INSERT INTO streak (id) VALUES (1)");
     await tx.runAsync("INSERT INTO laundry_reminder (id) VALUES (1)");
+    await tx.runAsync("INSERT INTO notification_config (id) VALUES (1)");
   });
 }

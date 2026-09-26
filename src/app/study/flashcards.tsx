@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 
+import { DAILY_GOAL } from "@/constants/goals";
 import { markFlashcard } from "@/database/queries/quality";
 import {
   getFlashcards,
@@ -82,7 +83,9 @@ export default function FlashcardsScreen() {
       <View style={styles.center}>
         <Text style={styles.done}>Nice work.</Text>
         <Text>You completed all {cards.length} flashcards in this deck.</Text>
-        <Text style={styles.count}>{count} / 50 items today</Text>
+        <Text style={styles.count}>
+          {count} / {DAILY_GOAL} items today
+        </Text>
       </View>
     );
   const card = cards[index];
@@ -90,7 +93,7 @@ export default function FlashcardsScreen() {
     <View style={styles.screen}>
       <Text style={styles.deck}>{deckName}</Text>
       <Text style={styles.count}>
-        {count} / 50 items today · {index + 1} / {cards.length}
+        {count} / {DAILY_GOAL} items today · {index + 1} / {cards.length}
       </Text>
       <View style={styles.card}>
         <Text style={styles.label}>QUESTION</Text>

@@ -28,7 +28,13 @@ export type Streak = {
   is_dead: number;
 };
 
-export type NotificationCategory = 'hydration' | 'sleep' | 'study' | 'miss_you' | 'laundry' | 'keep_calm';
+export type NotificationCategory = 'hydration' | 'sleep' | 'study' | 'miss_you' | 'laundry' | 'keep_calm' | 'weak_review';
 export type NotificationSetting = { category: NotificationCategory; is_enabled: number };
-export type LaundryReminder = { is_active: number; started_at: string | null };
+export type NotificationConfig = {
+  quiet_hours_enabled: number;
+  quiet_start_minute: number;
+  quiet_end_minute: number;
+};
+export type QuietHours = { startMinute: number; endMinute: number; enabled: boolean };
+export type LaundryReminder = { is_active: number; started_at: string | null; honor_quiet_hours: number };
 export type StudyItem = ({ kind: 'flashcard'; id: number; question: string; answer: string } | { kind: 'mcq'; id: number; question: string; options_json: string; correct_answer_index: number; explanation: string });

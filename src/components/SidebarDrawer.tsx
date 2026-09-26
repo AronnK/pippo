@@ -1,12 +1,16 @@
 import { getSubjects } from "@/database/queries/study";
+import type { QuietHours } from "@/database/types";
 import {
   getLaundryReminder,
+  getQuietHours,
   setLaundryReminder,
 } from "@/services/notificationService";
+import { formatMinute } from "@/utils/format";
 import { Link, type Href } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -25,19 +29,52 @@ export function SidebarDrawer({
   const db = useSQLiteContext();
   const [subjects, setSubjects] = useState<{ id: number; name: string }[]>([]);
   const [active, setActive] = useState(false);
+  const [allNight, setAllNight] = useState(false);
+  const [quiet, setQuiet] = useState<QuietHours | null>(null);
 
   useEffect(() => {
     if (visible && db) {
-      void Promise.all([getSubjects(db), getLaundryReminder(db)]).then(
-        ([s, l]) => {
-          setSubjects(s);
-          setActive(Boolean(l.is_active));
-        },
-      );
+      void Promise.all([
+        getSubjects(db),
+        getLaundryReminder(db),
+        getQuietHours(db),
+      ]).then(([s, l, q]) => {
+        setSubjects(s);
+        setActive(Boolean(l.is_active));
+        setAllNight(l.honor_quiet_hours !== 1);
+        setQuiet(q);
+      });
     }
   }, [visible, db]);
 
   if (!db) return null;
+
+  const armLaundry = () => {
+    const window =
+      quiet && quiet.enabled
+        ? `Pippo goes quiet between ${formatMinute(quiet.startMinute)} and ${formatMinute(quiet.endMinute)}.`
+        : "Quiet hours are off right now.";
+    onClose();
+    Alert.alert("How often should Pippo nag?", window, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "All night too",
+        onPress: () =>
+          void setLaundryReminder(db, true, false).then((l) => {
+            setActive(Boolean(l.is_active));
+            setAllNight(l.honor_quiet_hours !== 1);
+          }),
+      },
+      {
+        text: "Only my waking hours",
+        onPress: () =>
+          void setLaundryReminder(db, true, true).then((l) => {
+            setActive(Boolean(l.is_active));
+            setAllNight(l.honor_quiet_hours !== 1);
+          }),
+      },
+    ]);
+  };
 
   const item = (label: string, href: Href) => (
     <Link
@@ -79,15 +116,22 @@ export function SidebarDrawer({
           {item("Calendar", "/calendar" as Href)}
 
           <Pressable
-            onPress={() =>
-              void setLaundryReminder(db, !active).then((x) =>
-                setActive(Boolean(x.is_active)),
-              )
-            }
+            onPress={() => {
+              if (active) {
+                onClose();
+                void setLaundryReminder(db, false).then((l) => {
+                  setActive(Boolean(l.is_active));
+                  setAllNight(l.honor_quiet_hours !== 1);
+                });
+              } else armLaundry();
+            }}
             style={styles.item}
           >
             <Text>
-              🧺 {active ? "CLOTHES ARE SOAKING" : "I PUT MY CLOTHES TO SOAK"}
+              🧺{" "}
+              {active
+                ? `CLOTHES ARE SOAKING${allNight ? " · nagging all night" : " · daytime only"}`
+                : "I PUT MY CLOTHES TO SOAK"}
             </Text>
           </Pressable>
 
