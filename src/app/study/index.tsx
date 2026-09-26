@@ -24,7 +24,7 @@ export default function StudySubjectsScreen() {
         {subjects.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptySubtitle}>
-              You don't have any subjects yet. Tap below to create your first
+              You don’t have any subjects yet. Tap below to create your first
               one.
             </Text>
           </View>

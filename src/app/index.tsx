@@ -49,6 +49,7 @@ export default function HomeScreen() {
   const [menu, setMenu] = useState(false);
   const [timer, setTimer] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [messageSeed, setMessageSeed] = useState(0);
   const alerted = useRef(false);
 
   const load = useCallback(async () => {
@@ -66,6 +67,7 @@ export default function HomeScreen() {
     );
     setLaundry(reminder);
     setCelebrating(Boolean(milestone));
+    setMessageSeed(Math.floor(Math.random() * 1_000));
     void scheduleEnabledNotifications(db);
     void getManualTimer(db).then((row) => setTimer(row?.start_time ?? null));
   }, [db]);
@@ -79,6 +81,11 @@ export default function HomeScreen() {
   useEffect(() => {
     if (!streak.pending_freeze_decision || alerted.current) return;
     alerted.current = true;
+    const resolve = (useFreeze: boolean) =>
+      void resolveFreezeDecision(db, useFreeze).then(() => {
+        alerted.current = false;
+        void load();
+      });
     Alert.alert(
       "Pippo needs you",
       "You missed yesterday. Use one streak freeze to save Pippo?",
@@ -86,12 +93,9 @@ export default function HomeScreen() {
         {
           text: "Let Pippo Die",
           style: "destructive",
-          onPress: () => void resolveFreezeDecision(db, false).then(load),
+          onPress: () => resolve(false),
         },
-        {
-          text: "Use Streak Freeze",
-          onPress: () => void resolveFreezeDecision(db, true).then(load),
-        },
+        { text: "Use Streak Freeze", onPress: () => resolve(true) },
       ],
     );
   }, [db, load, streak.pending_freeze_decision]);
@@ -116,10 +120,8 @@ export default function HomeScreen() {
     setLaundry(await setLaundryReminder(db, !laundry.is_active));
 
   const state: PippoState = getCharacterState(streak, completed, celebrating);
-  const message =
-    PIPPO_MESSAGES[state][
-      Math.floor(Math.random() * PIPPO_MESSAGES[state].length)
-    ];
+  const pool = PIPPO_MESSAGES[state];
+  const message = pool[messageSeed % pool.length];
   const percentage = Math.min(completed / 50, 1) * 100;
 
   const timerToggle = async () => {
@@ -193,7 +195,7 @@ export default function HomeScreen() {
       {risk && (
         <Link href={"/study/emergency" as Href} asChild>
           <Pressable style={styles.danger}>
-            <Text style={styles.dangerText}>I DON'T WANT PIPPO TO DIE</Text>
+            <Text style={styles.dangerText}>I DON’T WANT PIPPO TO DIE</Text>
           </Pressable>
         </Link>
       )}

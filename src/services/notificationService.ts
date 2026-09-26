@@ -89,6 +89,23 @@ function dailyTrigger(
   };
 }
 
+// A DATE trigger inherits the current wall-clock time, so without this a
+// "miss you" reminder scheduled at 2am stays at 2am days later.
+function inWakingHours(date: Date) {
+  const hour = date.getHours();
+  if (hour >= QUIET_START_HOUR) date.setDate(date.getDate() + 1);
+  if (hour >= QUIET_START_HOUR || hour < QUIET_END_HOUR)
+    date.setHours(QUIET_END_HOUR, 0, 0, 0);
+  return date;
+}
+
+function dateTrigger(date: Date): Notifications.NotificationTriggerInput {
+  return {
+    type: Notifications.SchedulableTriggerInputTypes.DATE,
+    date: inWakingHours(date),
+  };
+}
+
 export async function ensureNotificationSettings(db: SQLiteDatabase) {
   for (const category of CATEGORIES)
     await db.runAsync(
@@ -146,6 +163,13 @@ export async function cancelCategory(category: NotificationCategory) {
   }
 }
 
+async function hasPendingCategory(category: NotificationCategory) {
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  return scheduled.some(
+    (item) => item.content.data?.pippoCategory === category,
+  );
+}
+
 export async function scheduleCategory(
   db: SQLiteDatabase,
   category: NotificationCategory,
@@ -156,6 +180,13 @@ export async function scheduleCategory(
       category,
     );
     if (!setting?.is_enabled || !(await permissionGranted())) return;
+    // One-shot categories are re-armed only once they have actually fired;
+    // rescheduling on every app open would push them out forever.
+    if (
+      (category === "miss_you" || category === "keep_calm") &&
+      (await hasPendingCategory(category))
+    )
+      return;
     await cancelCategory(category);
     if (category === "hydration") {
       for (const hour of [9, 11, 13, 15, 17, 19, 21])
@@ -178,10 +209,7 @@ export async function scheduleCategory(
       for (const days of [3, 8])
         await Notifications.scheduleNotificationAsync({
           content: content(category),
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: new Date(Date.now() + days * 86_400_000),
-          },
+          trigger: dateTrigger(new Date(Date.now() + days * 86_400_000)),
         });
     } else if (category === "keep_calm") {
       let next = Date.now();
@@ -189,10 +217,7 @@ export async function scheduleCategory(
         next += (Math.random() < 0.5 ? 4 : 5) * 86_400_000;
         await Notifications.scheduleNotificationAsync({
           content: content(category),
-          trigger: {
-            type: Notifications.SchedulableTriggerInputTypes.DATE,
-            date: new Date(next),
-          },
+          trigger: dateTrigger(new Date(next)),
         });
       }
     } else {

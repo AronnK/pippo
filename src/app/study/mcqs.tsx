@@ -16,6 +16,7 @@ import {
   recordCompletedItem,
 } from "@/database/queries/study";
 import type { Mcq } from "@/database/types";
+import { useStudyTracking } from "@/hooks/use-study-tracking";
 import { completeTodayIfEligible } from "@/services/streakService";
 
 export default function McqsScreen() {
@@ -24,37 +25,54 @@ export default function McqsScreen() {
     deckName: string;
   }>();
   const db = useSQLiteContext();
+  const id = Number(deckId);
   const [questions, setQuestions] = useState<Mcq[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [count, setCount] = useState(0);
+  const [busy, setBusy] = useState(false);
+  useStudyTracking("deck_mcqs", undefined, id);
   useEffect(() => {
-    void Promise.all([getMcqs(db, Number(deckId)), getTodayStats(db)]).then(
-      ([loaded, stats]) => {
-        setQuestions(loaded);
+    void Promise.all([getMcqs(db, id), getTodayStats(db)]).then(
+      ([mcqs, stats]) => {
+        setQuestions(mcqs);
         setCount(stats.items_completed);
+        setLoaded(true);
       },
     );
-  }, [db, deckId]);
+  }, [db, id]);
   const choose = async (choice: number) => {
-    if (selected !== null) return;
+    if (selected !== null || busy) return;
     setSelected(choice);
     const current = questions[index];
     const correct = choice === current.correct_answer_index;
-    await markMcq(db, current.id, correct);
-    await recordCompletedItem(db, "mcq");
-    await completeTodayIfEligible(db);
-    setCount((value) => value + 1);
+    setBusy(true);
+    try {
+      await markMcq(db, current.id, correct);
+      await recordCompletedItem(db, "mcq");
+      await completeTodayIfEligible(db);
+      setCount((await getTodayStats(db)).items_completed);
+    } finally {
+      setBusy(false);
+    }
   };
   const next = () => {
+    if (busy) return;
     setSelected(null);
     setIndex((value) => value + 1);
   };
-  if (!questions.length)
+  if (!loaded)
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text>No MCQs in this deck yet.</Text>
+      </View>
+    );
+  if (!questions.length)
+    return (
+      <View style={styles.center}>
+        <Text style={styles.done}>Nothing here yet.</Text>
+        <Text>This deck has no MCQs. Import some from the Study screen.</Text>
       </View>
     );
   if (index >= questions.length)
@@ -101,7 +119,11 @@ export default function McqsScreen() {
             {isCorrect ? "Correct!" : "Not quite."}
           </Text>
           <Text style={styles.explanation}>{mcq.explanation}</Text>
-          <Pressable onPress={next} style={styles.next}>
+          <Pressable
+            disabled={busy}
+            onPress={next}
+            style={styles.next}
+          >
             <Text style={styles.nextText}>Next question</Text>
           </Pressable>
         </View>

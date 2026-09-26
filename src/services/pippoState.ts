@@ -15,6 +15,7 @@ export function getCharacterState(
   streak: Streak,
   todayProgress: number,
   isCelebrating = false,
+  hour = new Date().getHours(),
 ): PippoState {
   if (streak.is_dead) return "dead";
   if (streak.pending_freeze_decision) return "pleading";
@@ -23,7 +24,9 @@ export function getCharacterState(
   if (todayProgress >= 50)
     return streak.current_streak >= 7 ? "very_happy" : "happy";
   if (todayProgress >= 25) return "happy";
-  if (streak.current_streak > 0)
+  if (streak.current_streak > 0) {
+    if (hour >= 20) return "angry";
     return todayProgress > 0 ? "slightly_sad" : "sad";
+  }
   return todayProgress > 0 ? "slightly_sad" : "neutral";
 }

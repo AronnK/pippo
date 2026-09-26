@@ -1,4 +1,4 @@
-import { useLocalSearchParams } from "expo-router";
+import { Link, useLocalSearchParams } from "expo-router";
 import { useSQLiteContext } from "expo-sqlite";
 import { useEffect, useState } from "react";
 import {
@@ -16,6 +16,7 @@ import {
   recordCompletedItem,
 } from "@/database/queries/study";
 import type { Flashcard } from "@/database/types";
+import { useStudyTracking } from "@/hooks/use-study-tracking";
 import { completeTodayIfEligible } from "@/services/streakService";
 
 export default function FlashcardsScreen() {
@@ -24,20 +25,23 @@ export default function FlashcardsScreen() {
     deckName: string;
   }>();
   const db = useSQLiteContext();
+  const id = Number(deckId);
   const [cards, setCards] = useState<Flashcard[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [count, setCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  useStudyTracking("deck_flashcards", undefined, id);
   useEffect(() => {
-    void Promise.all([
-      getFlashcards(db, Number(deckId)),
-      getTodayStats(db),
-    ]).then(([loaded, stats]) => {
-      setCards(loaded);
-      setCount(stats.items_completed);
-    });
-  }, [db, deckId]);
+    void Promise.all([getFlashcards(db, id), getTodayStats(db)]).then(
+      ([loadedCards, stats]) => {
+        setCards(loadedCards);
+        setCount(stats.items_completed);
+        setLoaded(true);
+      },
+    );
+  }, [db, id]);
   const answer = async (knewIt: boolean) => {
     if (submitting) return;
     setSubmitting(true);
@@ -53,11 +57,24 @@ export default function FlashcardsScreen() {
       setSubmitting(false);
     }
   };
-  if (!cards.length)
+  if (!loaded)
     return (
       <View style={styles.center}>
         <ActivityIndicator />
-        <Text>No flashcards in this deck yet.</Text>
+      </View>
+    );
+  if (!cards.length)
+    return (
+      <View style={styles.center}>
+        <Text style={styles.done}>Nothing here yet.</Text>
+        <Text>
+          This deck has no flashcards. Import some JSON, or pick another deck.
+        </Text>
+        <Link href="/study" asChild>
+          <Pressable style={styles.reveal}>
+            <Text style={styles.revealText}>Back to subjects</Text>
+          </Pressable>
+        </Link>
       </View>
     );
   if (index >= cards.length)
