@@ -114,6 +114,7 @@ export function SidebarDrawer({
 
           <Text style={styles.section}>TOOLS</Text>
           {item("Progress", "/progress" as Href)}
+          {item("💌 A Note From Pippo", "/note" as Href)}
 
           <Pressable
             onPress={() => {

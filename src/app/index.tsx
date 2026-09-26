@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PippoCharacter } from "@/components/PippoCharacter";
 import { SidebarDrawer } from "@/components/SidebarDrawer";
 import { DAILY_GOAL } from "@/constants/goals";
-import { PIPPO_MESSAGES } from "@/constants/pippoMessages";
+import { milestoneMessage, PIPPO_MESSAGES } from "@/constants/personalMessages";
 import { formatDuration } from "@/utils/format";
 import { getTodayStats } from "@/database/queries/study";
 import type { Streak } from "@/database/types";
@@ -150,9 +150,15 @@ export default function HomeScreen() {
       <Text style={styles.message}>{message}</Text>
 
       {celebrating && (
-        <Text style={styles.celebration}>
-          🎉 {streak.current_streak} days together — a streak freeze was earned!
-        </Text>
+        <View style={styles.celebration}>
+          <Text style={styles.celebrationTitle}>
+            🎉 {streak.current_streak} days together — a streak freeze was
+            earned!
+          </Text>
+          <Text style={styles.celebrationMessage}>
+            {milestoneMessage(streak.current_streak)}
+          </Text>
+        </View>
       )}
 
       <View style={styles.card}>
@@ -230,13 +236,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   celebration: {
-    textAlign: "center",
-    color: "#C25A27",
     backgroundColor: "#FFE9BC",
     padding: 12,
     borderRadius: 12,
-    fontWeight: "700",
+    gap: 6,
   },
+  celebrationTitle: { color: "#C25A27", fontWeight: "800" },
+  celebrationMessage: { color: "#6C564D", fontWeight: "600" },
   card: { backgroundColor: "#FFF", padding: 18, borderRadius: 18, gap: 12 },
   streakLine: {
     flexDirection: "row",

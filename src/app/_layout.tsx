@@ -55,6 +55,7 @@ export default function RootLayout() {
             name="progress/statistics"
             options={{ title: "Statistics" }}
           />
+          <Stack.Screen name="note" options={{ title: "A Note From Pippo" }} />
           <Stack.Screen name="timer" options={{ title: "Study Timer" }} />
           <Stack.Screen
             name="study/weak"
