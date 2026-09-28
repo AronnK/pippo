@@ -24,6 +24,14 @@ export async function getSubjects(db: SQLiteDatabase) {
   return db.getAllAsync<Subject>('SELECT * FROM subjects ORDER BY name COLLATE NOCASE');
 }
 
+// Deleting a subject takes its decks, their cards and MCQs and every weak mark
+// on them, because each child is ON DELETE CASCADE. The study_sessions they
+// generated stay and lose their labels (SET NULL), so banked study time
+// outlives the subject it was filed under.
+export async function deleteSubject(db: SQLiteDatabase, id: number) {
+  await db.runAsync('DELETE FROM subjects WHERE id = ?', id);
+}
+
 export async function getDecks(db: SQLiteDatabase, subjectId: number) {
   return db.getAllAsync<Deck>('SELECT * FROM decks WHERE subject_id = ? ORDER BY name COLLATE NOCASE', subjectId);
 }
