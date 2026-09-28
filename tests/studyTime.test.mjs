@@ -285,12 +285,17 @@ console.log("\ngrowth insights");
 const history = migratedDb();
 const lastWeekDay = study.shiftDate(study.weekStart(today), -1);
 const farAway = study.shiftDate(today, -40);
-for (const [date, seconds, items] of [
+// The empty day has to sit beside lastWeekDay rather than at a fixed offset
+// from today: on the first day of a week `today - 1` IS lastWeekDay, and
+// daily_stats only allows one row per date.
+const quietDay = study.shiftDate(lastWeekDay, -1);
+const seededDays = [
   [today, 7200, 50],
-  [study.shiftDate(today, -1), 0, 0],
+  [quietDay, 0, 0],
   [lastWeekDay, 3600, 50],
   [farAway, 9000, 50],
-])
+];
+for (const [date, seconds, items] of seededDays)
   history.raw
     .prepare(
       "INSERT INTO daily_stats (date,items_completed,flashcards_completed,mcqs_completed,study_seconds) VALUES (?,?,?,0,?)",
@@ -324,10 +329,15 @@ check(
   [week[0].date === study.shiftDate(today, -6), week.at(-1).date === today],
   [true, true],
 );
+// Which day has no row depends on where today sits in its week, so it is picked
+// out of the seeded set instead of hardcoded.
+const untouched = week.find(
+  (day) => !seededDays.some(([date]) => date === day.date),
+);
 check(
   "days without stats appear as zeros",
-  week.find((day) => day.date === study.shiftDate(today, -1)),
-  { date: study.shiftDate(today, -1), seconds: 0, items: 0 },
+  [untouched.seconds, untouched.items],
+  [0, 0],
 );
 check("today's seconds carry into the series", week.at(-1).seconds, 7200);
 check("up is a positive percentage", study.percentChange(120, 100), 20);
